@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load static %} 
+{% block content %}
+
+<div class="grid">
+{% for p in products %}
+    <div class="card {% if p.aspect_ratio == '2:1' %}span-2-1{% elif p.aspect_ratio == '1:2' %}span-1-2{% else %}span-1-1{% endif %}">
+        <a href="{% url 'artDetail' p.pk %}">
+            <img src="{{ p.image_file.url }}" alt="{{ p.title }}" href="{% url 'artDetail' p.pk %}">
+            <div class="overlay">
+                <h3>{{p.title}} </h3>
+                <p>{{p.date}}</p>
+                <p>No. {{p.pk}}, {{p.category}}, {{p.method}}</p> <br> </br>
+                <p>{{p.description}}</p>
+            </div>
+        </a>
+    </div> 
+{% endfor %}
+</div> 
+<link rel="stylesheet" type="text/css" href="{% static 'worldmap/style.css' %}">
+
+
+{% endblock %}

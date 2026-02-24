@@ -1,0 +1,13 @@
+{% extends "base.html" %} 
+{% load static %}
+{% block content %}
+
+<canvas id="c"></canvas>
+
+<script  type="importmap">{
+        "imports": {
+            "three": "https://cdn.skypack.dev/three@0.132.2"   
+        }
+}</script>
+<script type="module" src="{% static 'museum/main.js' %}"></script>
+{% endblock %}

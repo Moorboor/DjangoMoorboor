@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% load static %} 
+{% block content %} 
+    <div id="product-grid", class="grid">
+        <canvas id="c"></canvas>
+    </div>
+    <link rel="stylesheet" type="text/css" href="{% static 'three/style.css' %}">
+        
+    <script  type="importmap">{
+        "imports": {
+            "three": "https://cdn.skypack.dev/three@0.132.2"   
+        }
+    }</script>
+    <script type="module" src="{% static 'three/main.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,34 @@
+Why do I want to have a database?
+- to have a portfolio. 
+- to povide user interaction
+- search, categorize, texts, blogs, connections
+
+
+
+Why do I want a dynamic database?
+- multiple users can change the website
+- dynamic means that they can add act and change the website?
+- I will have superusers and users. 
+
+
+
+What data is in my database:
+- texts: blogs
+- videos: youtube, mp4
+- images: 2D art, electric circuts photography
+- models: 3D art
+- slides: presentations
+- games: three js
+- graphs: pyvis graphs
+
+
+
+
+
+apps: 
+
+maps:
+    - gallery
+    - museum
+    - SvalbardArt
+    - Home iontrap

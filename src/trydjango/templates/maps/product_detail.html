@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load static %} 
+{% block content %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'worldmap/style2.css' %}">
+{{ product.geocoor|json_script:"coords-json" }}
+
+
+<h1>{{ product.title }}</h1>
+<div class="image-wrapper">
+    <img src="{{ product.image_file.url }}" alt="{{ product.title }}" class="image-wrapper">
+    <p><strong>Date:</strong> {{ product.date }}</p>
+    <p>{{ product.description|linebreaks }}</p>
+    <p><a href="{% url 'map-detail' %}">← Back to gallery</a></p>
+</div>
+
+
+{% with imgs=product.carousel_images.all %}
+  {% if imgs %}
+    <div class="carousel" id="productCarousel">
+
+      {% if imgs|length > 3 %}
+        <button class="carousel-btn prev" type="button" aria-label="Previous">‹</button>
+      {% endif %}
+
+      <div class="carousel-viewport">
+        <div class="carousel-track">
+          {% for img in imgs %}
+            <div class="carousel-slide">
+              <img src="{{ img.image.url }}" alt="{{ img.caption|default:product.title }}">
+              {% if img.caption %}
+                <div class="carousel-caption">{{ img.caption }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if imgs|length > 3 %}
+        <button class="carousel-btn next" type="button" aria-label="Next">›</button>
+      {% endif %}
+
+    </div>
+  {% endif %}
+{% endwith %}
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Upload</button>
+</form>
+
+
+<div id="map"></div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script type="module">
+    (async () => {
+    const products = await fetch('/api/products/').then(r => r.json());
+    const coords = JSON.parse(document.getElementById('coords-json').textContent);
+    const parts = coords.split(",");
+    const lat = parts[0];
+    const lng = parts[1];
+    const map = L.map('map')   // you can change the zoom
+    
+      // Satellite imagery (base)
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution:
+          'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN',
+        maxZoom: 19
+      }
+    ).addTo(map);
+
+    // Labels overlay (names/roads/places on top of satellite)
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Labels &copy; Esri',
+        maxZoom: 19
+      }
+    ).addTo(map);
+        
+    for (const p of products) {
+        const coords = p.geocoor.split(",");
+
+        const popupContent = `
+        <div class="popup" style="background-color: black; color: white; padding: 10px;">
+            <h3> <a href="${p.url}">${p.title}</a> </h3>
+            <img src="${p.image_url}" alt="${p.title}" style="width: 150px;">
+           
+          </div>
+        `;
+
+        L.marker([coords[0], coords[1]])
+        .addTo(map)
+        .bindPopup(popupContent)
+        .openPopup();
+    }
+    map.setView([lat, lng], 14);
+
+    {% comment %} L.marker([lat, lng])
+    .addTo(map)
+    .bindPopup(`{{ product.title|escapejs }}`)
+    .openPopup(); 
+     {% endcomment %}
+})();
+</script>
+
+<script>
+(function () {
+  const root = document.getElementById("productCarousel");
+  if (!root) return;
+
+  const track = root.querySelector(".carousel-track");
+  const slides = Array.from(root.querySelectorAll(".carousel-slide"));
+  const prev = root.querySelector(".prev");
+  const next = root.querySelector(".next");
+
+  // If you rendered no buttons (<=3 images), nothing to do
+  if (!prev || !next) return;
+
+  let index = 0;
+
+  function slidesPerView() {
+    return window.matchMedia("(max-width: 700px)").matches ? 1 : 3;
+  }
+
+  function maxIndex() {
+    return Math.max(0, slides.length - slidesPerView());
+  }
+
+  function slideWidth() {
+    return slides[0].getBoundingClientRect().width;
+  }
+
+  function render() {
+    const w = slideWidth();
+    track.style.transform = `translateX(-${index * w}px)`;
+
+    prev.disabled = (index <= 0);
+    next.disabled = (index >= maxIndex());
+  }
+
+  prev.addEventListener("click", () => {
+    index = Math.max(0, index - 1);
+    render();
+  });
+
+  next.addEventListener("click", () => {
+    index = Math.min(maxIndex(), index + 1);
+    render();
+  });
+
+  window.addEventListener("resize", () => {
+    index = Math.min(index, maxIndex());
+    render();
+  });
+
+  render();
+})();
+</script>
+
+{% endblock content %}

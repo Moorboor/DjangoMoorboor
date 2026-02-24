@@ -1,0 +1,5 @@
+Django>=5.2.0,<5.3.0
+python-decouple
+gunicorn
+waitress 
+whitenoise[brotli]

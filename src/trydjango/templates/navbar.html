@@ -1,0 +1,64 @@
+<style>
+  /* Reset some default browser spacing */
+  nav, nav ul {
+      margin: 0;
+      padding: 0;
+  }
+
+  /* 1️⃣ Make the <ul> a flex container → horizontal layout   */
+  nav ul {
+      display: flex;                 /* children (li) line up in a row */
+      justify-content: center;       /* centre the whole menu */
+      gap: 1.5rem;                   /* space between items (fallback for older browsers) */
+      list-style: none;              /* remove bullet points */
+  }
+
+  /* 2️⃣ Optional – give each <li> a little extra clickable area */
+  nav li {
+      /* No extra styles needed – the flex container already handles spacing.
+          If you want a fixed width you could add: width: 120px; text-align:center; */
+  }
+
+  /* 3️⃣ Style the links */
+  nav a {
+      display: inline-block;         /* allows padding to expand the click‑area */
+      padding: .4rem .2rem;
+      color: #fff;                   /* text colour */
+      text-decoration: none;         /* remove underline */
+      font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+      font-size: 1rem;
+      transition: color .2s, background .2s;
+  }
+
+  /* 4️⃣ Hover / active states */
+  nav a:hover,
+  nav a:focus {
+      color: #000;
+      background: rgba(255,255,255,.7);
+      border-radius: 4px;
+  }
+
+  /* 5️⃣ Optional – indicate the current page */
+  .active {
+      font-weight: bold;
+      border-bottom: 2px solid #fff;
+  }
+
+  /* 6️⃣ Background for the whole nav bar (optional) */
+  nav {
+      background: #111;      /* dark background so white text stands out */
+      padding: .5rem 0;      /* vertical space inside the bar */
+  }
+</style>
+<nav>
+
+
+  <ul>
+    <li><a href="{% url 'home' %}">Home</a></li>
+    <li><a href="{% url 'map-detail' %}">Maps</a></li>
+    <li><a href="{% url 'SvalbardArt' %}">SvalbardArt</a></li>
+    <li><a href="{% url 'threeTest' %}">Three Test</a></li>
+    <li><a href="{% url 'contacts' %}">Contacts</a></li>
+    <li><a href="{% url 'museum' %}">Museum</a></li>
+  </ul>
+</nav>
