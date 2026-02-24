@@ -1,5 +1,7 @@
 src/trydjango/staticfiles
 src/trydjango/media/
+all_my_passions.pur
+concept design.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
