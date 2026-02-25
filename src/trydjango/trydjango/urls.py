@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 
 from maps.views import map_detail_view, ProductListAPI, museum_view, product_view, home_view, SvalbardArt_view, contact_view, threeTest_view
-
+from django.views.static import serve
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -35,4 +35,10 @@ urlpatterns = [
     path('home/threeTest/', threeTest_view, name='threeTest'),
     path('api/products/', ProductListAPI.as_view()),
     path('museum/', museum_view, name="museum"),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 
+if settings.DEBUG: 
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else: 
+    urlpatterns += [
+        path("media/<path:path>", serve, {"document_root": str(settings.MEDIA_ROOT)}),
+    ]
