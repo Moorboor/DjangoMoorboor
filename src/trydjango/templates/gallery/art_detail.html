@@ -1,12 +1,36 @@
 {% extends "base.html" %}
-{% load static %} 
+{% load static %}
 {% block content %}
 
-<link rel="stylesheet" type="text/css" href="{% static 'worldmap/style2.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'gallery/artworkDetail/style.css' %}">
 {{ product.geocoor|json_script:"coords-json" }}
 
+{# ── Product-to-product navigation ─────────────────────────── #}
+<div class="product-nav-header">
 
-<h1>{{ product.title }}</h1>
+  {% if prev_product %}
+    <a href="{% url 'artworkDetail' prev_product.pk %}"
+       id="prevProductBtn"
+       class="product-nav-btn"
+       aria-label="Previous: {{ prev_product.title }}">&#8249;</a>
+  {% else %}
+    <span class="product-nav-btn is-disabled" aria-hidden="true">&#8249;</span>
+  {% endif %}
+
+  <h1 class="product-nav-title">{{ product.title }}</h1>
+
+  {% if next_product %}
+    <a href="{% url 'artworkDetail' next_product.pk %}"
+       id="nextProductBtn"
+       class="product-nav-btn"
+       aria-label="Next: {{ next_product.title }}">&#8250;</a>
+  {% else %}
+    <span class="product-nav-btn is-disabled" aria-hidden="true">&#8250;</span>
+  {% endif %}
+
+</div>
+{# ── end product nav ────────────────────────────────────────── #}
+
 <div class="image-wrapper">
     <img src="{{ product.image_file.url }}" alt="{{ product.title }}" class="image-wrapper">
     <p><strong>Date:</strong> {{ product.date }}</p>
@@ -14,13 +38,11 @@
     <p><a href="{% url 'gallery' %}">← Back to gallery</a></p>
 </div>
 
-
 {% with imgs=product.carousel_images.all %}
   {% if imgs %}
     <div class="carousel" id="productCarousel">
-
-      {% if imgs|length > 3 %}
-        <button class="carousel-btn prev" type="button" aria-label="Previous">‹</button>
+      {% if imgs|length > 1 %}
+        <button class="carousel-btn prev" type="button" aria-label="Previous">&#8249;</button>
       {% endif %}
 
       <div class="carousel-viewport">
@@ -36,65 +58,137 @@
         </div>
       </div>
 
-      {% if imgs|length > 3 %}
-        <button class="carousel-btn next" type="button" aria-label="Next">›</button>
+      {% if imgs|length > 1 %}
+        <button class="carousel-btn next" type="button" aria-label="Next">&#8250;</button>
       {% endif %}
-
     </div>
   {% endif %}
 {% endwith %}
 
+
+{# ── Carousel JS (unchanged from before) ───────────────────── #}
 <script>
 (function () {
   const root = document.getElementById("productCarousel");
   if (!root) return;
 
-  const track = root.querySelector(".carousel-track");
-  const slides = Array.from(root.querySelectorAll(".carousel-slide"));
-  const prev = root.querySelector(".prev");
-  const next = root.querySelector(".next");
-
-  // If you rendered no buttons (<=3 images), nothing to do
-  if (!prev || !next) return;
+  const track    = root.querySelector(".carousel-track");
+  const viewport = root.querySelector(".carousel-viewport");
+  const slides   = Array.from(root.querySelectorAll(".carousel-slide"));
+  const prevBtn  = root.querySelector(".prev");
+  const nextBtn  = root.querySelector(".next");
 
   let index = 0;
 
   function slidesPerView() {
     return window.matchMedia("(max-width: 700px)").matches ? 1 : 3;
   }
+  function maxIndex()   { return Math.max(0, slides.length - slidesPerView()); }
+  function slideWidth() { return slides[0].getBoundingClientRect().width; }
 
-  function maxIndex() {
-    return Math.max(0, slides.length - slidesPerView());
+  function goTo(n) {
+    index = Math.max(0, Math.min(maxIndex(), n));
+    track.style.transform = `translateX(-${index * slideWidth()}px)`;
+    if (prevBtn) prevBtn.disabled = index <= 0;
+    if (nextBtn) nextBtn.disabled = index >= maxIndex();
   }
 
-  function slideWidth() {
-    return slides[0].getBoundingClientRect().width;
+  if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1));
+  if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1));
+
+  // Touch swipe (carousel only)
+  let cTouchX = 0, cTouchY = 0, cDragging = false;
+  const CSWIPE = 50;
+
+  viewport.addEventListener("touchstart", (e) => {
+    cTouchX   = e.changedTouches[0].clientX;
+    cTouchY   = e.changedTouches[0].clientY;
+    cDragging = true;
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", (e) => {
+    if (!cDragging) return;
+    if (Math.abs(e.changedTouches[0].clientY - cTouchY) >
+        Math.abs(e.changedTouches[0].clientX - cTouchX)) cDragging = false;
+  }, { passive: true });
+
+  viewport.addEventListener("touchend", (e) => {
+    if (!cDragging) return;
+    cDragging = false;
+    const diff = cTouchX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);
+  }, { passive: true });
+
+  // Mouse drag (carousel only)
+  let mStartX = 0, mDown = false;
+  viewport.addEventListener("mousedown",  (e) => { mStartX = e.clientX; mDown = true; e.preventDefault(); });
+  window.addEventListener("mouseup",      (e) => {
+    if (!mDown) return; mDown = false;
+    const diff = mStartX - e.clientX;
+    if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);
+  });
+
+  window.addEventListener("resize", () => goTo(index));
+  goTo(0);
+})();
+</script>
+
+
+{# ── Product-to-product navigation JS ──────────────────────── #}
+<script>
+(function () {
+  // Read URLs directly from the anchor elements rendered by Django
+  const prevUrl = document.getElementById("prevProductBtn")?.href ?? null;
+  const nextUrl = document.getElementById("nextProductBtn")?.href ?? null;
+
+  function navigate(url) {
+    if (url) window.location.href = url;
   }
 
-  function render() {
-    const w = slideWidth();
-    track.style.transform = `translateX(-${index * w}px)`;
+  /* ── keyboard: ArrowLeft / ArrowRight ──────────────────────
+     Only fires when the carousel is NOT visible on screen,
+     so the two handlers never clash.                          */
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
 
-    prev.disabled = (index <= 0);
-    next.disabled = (index >= maxIndex());
-  }
+    // Ignore when user is typing
+    const tag = document.activeElement.tagName;
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
-  prev.addEventListener("click", () => {
-    index = Math.max(0, index - 1);
-    render();
+    // Yield to the carousel keyboard handler while carousel is in view
+    const carousel = document.getElementById("productCarousel");
+    if (carousel) {
+      const r = carousel.getBoundingClientRect();
+      if (r.top < window.innerHeight && r.bottom > 0) return;
+    }
+
+    e.preventDefault();
+    if (e.key === "ArrowLeft")  navigate(prevUrl);  // ← prev product
+    if (e.key === "ArrowRight") navigate(nextUrl);  // → next product
   });
 
-  next.addEventListener("click", () => {
-    index = Math.min(maxIndex(), index + 1);
-    render();
-  });
+  /* ── page-level swipe (skips touches that start in the carousel) ── */
+  const PAGE_SWIPE = 60;   // px threshold
+  let pTouchX = 0, pTouchY = 0, fromCarousel = false;
 
-  window.addEventListener("resize", () => {
-    index = Math.min(index, maxIndex());
-    render();
-  });
+  document.addEventListener("touchstart", (e) => {
+    fromCarousel = !!e.target.closest("#productCarousel");
+    pTouchX      = e.changedTouches[0].clientX;
+    pTouchY      = e.changedTouches[0].clientY;
+  }, { passive: true });
 
-  render();
+  document.addEventListener("touchend", (e) => {
+    if (fromCarousel) return;  // let the carousel handle it
+
+    const dx = pTouchX - e.changedTouches[0].clientX;   // + → swipe left
+    const dy = Math.abs(pTouchY - e.changedTouches[0].clientY);
+
+    if (dy > Math.abs(dx))      return;  // mostly vertical → ignore
+    if (Math.abs(dx) < PAGE_SWIPE) return;  // too short → ignore
+
+    navigate(dx > 0 ? nextUrl : prevUrl);
+    //        ← swipe left = next    ← swipe right = prev
+  }, { passive: true });
 })();
 </script>
 
@@ -104,62 +198,39 @@
   <button type="submit">Upload</button>
 </form>
 
-
 <div id="map"></div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script type="module">
-    (async () => {
-    const products = await fetch('/api/artworks/').then(r => r.json());
-    const coords = JSON.parse(document.getElementById('coords-json').textContent);
-    const parts = coords.split(",");
-    const lat = parts[0];
-    const lng = parts[1];
-    const map = L.map('map')   // you can change the zoom
-    
-      // Satellite imagery (base)
-    L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      {
-        attribution:
-          'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN',
-        maxZoom: 19
-      }
-    ).addTo(map);
+(async () => {
+  const products = await fetch('/api/artworks/').then(r => r.json());
+  const coords   = JSON.parse(document.getElementById('coords-json').textContent);
+  const [lat, lng] = coords.split(",");
 
-    // Labels overlay (names/roads/places on top of satellite)
-    L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-      {
-        attribution: 'Labels &copy; Esri',
-        maxZoom: 19
-      }
-    ).addTo(map);
-        
-    for (const p of products) {
-        const coords = p.geocoor.split(",");
+  const map = L.map('map');
 
-        const popupContent = `
-        <div class="popup" style="background-color: black; color: white; padding: 10px;">
-            <h3> <a href="${p.url}">${p.title}</a> </h3>
-            <img src="${p.image_url}" alt="${p.title}" style="width: 150px;">
-           
-          </div>
-        `;
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
+  ).addTo(map);
 
-        L.marker([coords[0], coords[1]])
-        .addTo(map)
-        .bindPopup(popupContent)
-        .openPopup();
-    }
-    map.setView([lat, lng], 14);
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Labels &copy; Esri', maxZoom: 19 }
+  ).addTo(map);
 
-    {% comment %} L.marker([lat, lng])
-    .addTo(map)
-    .bindPopup(`{{ product.title|escapejs }}`)
-    .openPopup(); 
-     {% endcomment %}
+  for (const p of products) {
+    const [pLat, pLng] = p.geocoor.split(",");
+    const popup = `
+      <div style="background:black;color:white;padding:10px;">
+        <h3><a href="${p.url}" style="color:white;">${p.title}</a></h3>
+        <img src="${p.image_url}" alt="${p.title}" style="width:150px;">
+      </div>`;
+    L.marker([pLat, pLng]).addTo(map).bindPopup(popup);
+  }
+
+  map.setView([lat, lng], 14);
 })();
 </script>
 

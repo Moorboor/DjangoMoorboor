@@ -2,6 +2,8 @@
 {% load static %} 
 {% block content %}
 
+<link rel="stylesheet" type="text/css" href="{% static 'gallery/style.css' %}">
+
 <div class="grid">
 {% for p in products %}
     <div class="card {% if p.aspect_ratio == '2:1' %}span-2-1{% elif p.aspect_ratio == '1:2' %}span-1-2{% else %}span-1-1{% endif %}">
@@ -17,7 +19,6 @@
     </div> 
 {% endfor %}
 </div> 
-<link rel="stylesheet" type="text/css" href="{% static 'worldmap/style.css' %}">
 
 
 {% endblock %}

@@ -14,9 +14,9 @@ class Plane {
     }
 
     async _CreatePlane(scene) {
-        const boxWidth = 1;
-        const boxHeight = 1;
-        const boxDepth = 1;
+        const boxWidth = 1.2;
+        const boxHeight = 1.2;
+        const boxDepth = 0.1;
         const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
         const material = new THREE.MeshBasicMaterial({color: 0xffffff });
         this.plane = new THREE.Mesh(geometry, material);
@@ -48,7 +48,8 @@ class SceneManager {
     }
 
     async _FetchProductData(){
-        const response = await fetch(`/api/artworks/`);
+        // Add the ordering param to the URL
+        const response = await fetch(`/api/artworks/?ordering=-date`);
         this.productData = await response.json();
     }
 

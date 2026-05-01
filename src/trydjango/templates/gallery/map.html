@@ -4,18 +4,20 @@
 
 <link rel="stylesheet" type="text/css" href="{% static 'map/style.css' %}">
 
-
-
-
 <div id="map"></div>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script> 
+
 <script type="module">
   (async () => {
     const products = await fetch('/api/artworks/').then(r => r.json());
 
-    const map = L.map('map')   // you can change the zoom
-      // Satellite imagery (base)
+    // 1️⃣ sort oldest → newest so the line goes forward in time
+    products.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const map = L.map('map');
+
+    // Satellite imagery (base)
     L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       {
@@ -33,24 +35,40 @@
         maxZoom: 19
       }
     ).addTo(map);
-        
+
+    // 2️⃣ collect [lat, lng] pairs in chronological order for the line
+    const latLngs = [];
+
     for (const p of products) {
-        const coords = p.geocoor.split(",");
+      const coords = p.geocoor.split(",");
 
-        const popupContent = `
+      const popupContent = `
         <div class="popup" style="background-color: black; color: white; padding: 10px;">
-            <h3> <a href="${p.url}">${p.title}</a> </h3>
-            <img src="${p.image_url}" alt="${p.title}" style="width: 150px;">
-           
-          </div>
-        `;
-        L.marker([coords[0], coords[1]])
-        .addTo(map)
-        .bindPopup(popupContent)
-        .openPopup();
-    }
-    map.setView([0, 0], 2);
-})();
-</script> 
-{% endblock content %}
+          <h3><a href="${p.url}" style="color:#ffd700;">${p.title}</a></h3>
+          <img src="${p.image_url}" alt="${p.title}" style="width:150px;">
+          <p>${new Date(p.date).toLocaleDateString()}</p>
+        </div>
+      `;
 
+      L.marker([coords[0], coords[1]])
+        .addTo(map)
+        .bindPopup(popupContent);
+
+      latLngs.push([coords[0], coords[1]]);
+    }
+
+    // 3️⃣ draw the line connecting all points in date order
+    L.polyline(latLngs, {
+      color:     '#ff6600',
+      weight:    2,
+      opacity:   0.8,
+      dashArray: '6,6'
+    }).addTo(map);
+
+    // 4️⃣ fit the map to show all points
+    map.fitBounds(latLngs);
+
+  })();
+</script>
+
+{% endblock content %}

@@ -26,8 +26,12 @@ def gallery_view(request, *args, **kwargs):
     return render(request, "gallery/gallery.html", context)
 
     
+    
 def artwork_view(request, pk):
+    
     product = get_object_or_404(Product.objects.select_related("artist").prefetch_related("carousel_images"),pk=pk)
+    prev_product = Product.objects.filter(pk__lt=pk).order_by('-pk').first()
+    next_product = Product.objects.filter(pk__gt=pk).order_by('pk').first()
     
     if request.method == "POST":
         form = ProductImageForm(request.POST, request.FILES)
@@ -38,11 +42,14 @@ def artwork_view(request, pk):
             return redirect("artworkDetail", pk=product.pk)  # go back to product page
     else:
         form = ProductImageForm()
-        
-    return render(request, "gallery/art_detail.html", {"form": form, "product": product})
     
-    
-#########################################################
+    context = {
+        'product':      product,
+        'prev_product': prev_product,
+        'next_product': next_product,
+        "form": form
+    }
+    return render(request, "gallery/art_detail.html", context=context)
 
 def home_view(request, *args, **kwargs):
     print(args, kwargs)
