@@ -1,6 +1,7 @@
 src/trydjango/staticfiles
 src/trydjango/media/
-all_my_passions.pur
+all_my_passions.pur*
+concept_design.txt
 concept design.txt
 ResizeImages.ipynb
 arts_fullres

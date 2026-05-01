@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from maps.views import map_detail_view, ProductListAPI, museum_view, product_view, home_view, SvalbardArt_view, contact_view, threeTest_view
+from maps.views import ProductListAPI, map_view, museum_view, gallery_view, artwork_view, home_view, contact_view, threeTest_view
 from django.views.static import serve
 
 from django.conf import settings
@@ -25,15 +25,16 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
+    path('admin/', admin.site.urls),
     path('', home_view, name='home'),
     path('home/', home_view, name='home'),
     path('contacts/', contact_view, name='contacts'),
-    path('SvalbardArt/', SvalbardArt_view, name='SvalbardArt'),
-    path('admin/', admin.site.urls),
-    path('maps/', map_detail_view, name='map-detail'),
-    path('maps/<int:pk>/', product_view, name='artDetail'), 
+    
+    path('gallery/', gallery_view, name='gallery'),
+    path('gallery/<int:pk>/', artwork_view, name='artworkDetail'), 
+    path('api/artworks/', ProductListAPI.as_view()),
     path('home/threeTest/', threeTest_view, name='threeTest'),
-    path('api/products/', ProductListAPI.as_view()),
+    path('gallery/map/', map_view, name='map'),
     path('museum/', museum_view, name="museum"),
 ] 
 if settings.DEBUG: 

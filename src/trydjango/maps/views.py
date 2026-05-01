@@ -14,17 +14,20 @@ class ProductListAPI(APIView):
         serializer = ProductSerializer(products, many=True, context={"request": request})
         return Response(serializer.data)
 
+
 class ProductDetailView(DetailView):
     model = Product
     context_object_name = "product"
 
 
+def gallery_view(request, *args, **kwargs):
+    products = Product.objects.all().order_by("-date")
+    context = {"products": products} 
+    return render(request, "gallery/gallery.html", context)
+
     
-def product_view(request, pk):
-    product = get_object_or_404(
-        Product.objects.select_related("artist").prefetch_related("carousel_images"),
-        pk=pk
-    )
+def artwork_view(request, pk):
+    product = get_object_or_404(Product.objects.select_related("artist").prefetch_related("carousel_images"),pk=pk)
     
     if request.method == "POST":
         form = ProductImageForm(request.POST, request.FILES)
@@ -32,26 +35,13 @@ def product_view(request, pk):
             obj = form.save(commit=False)
             obj.product = product         
             obj.save()
-            return redirect("artDetail", pk=product.pk)  # go back to product page
+            return redirect("artworkDetail", pk=product.pk)  # go back to product page
     else:
         form = ProductImageForm()
-    return render(request, "maps/product_detail.html", {"form": form, "product": product})
+        
+    return render(request, "gallery/art_detail.html", {"form": form, "product": product})
     
     
-def map_detail_view(request, *args, **kwargs):
-    products = Product.objects.all().order_by("-date")
-    context = {
-        "products": products
-    }   
-    return render(request, "maps/detail.html", context)
-
-# def product_create_view(request, pk):
-#     product = get_object_or_404(Product, pk=pk)
-
-    
-
-#     return render(request, "maps/product_create.html", {"form": form, "product": product})
-
 #########################################################
 
 def home_view(request, *args, **kwargs):
@@ -68,10 +58,8 @@ def museum_view(request, *args, **kwargs):
     }
     return render(request, "museum.html", context)
     
-
-    
-def SvalbardArt_view(request, *args, **kwargs):
-    return render(request, "SvalbardArt.html", {})
+def map_view(request, *args, **kwargs):
+    return render(request, "gallery/map.html", {})
 
 def threeTest_view(request, *args, **kwargs):
     return render(request, "threeTest.html", {})

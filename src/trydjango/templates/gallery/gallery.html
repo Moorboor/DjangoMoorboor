@@ -5,8 +5,8 @@
 <div class="grid">
 {% for p in products %}
     <div class="card {% if p.aspect_ratio == '2:1' %}span-2-1{% elif p.aspect_ratio == '1:2' %}span-1-2{% else %}span-1-1{% endif %}">
-        <a href="{% url 'artDetail' p.pk %}">
-            <img src="{{ p.image_file.url }}" alt="{{ p.title }}" href="{% url 'artDetail' p.pk %}">
+        <a href="{% url 'artworkDetail' p.pk %}">
+            <img src="{{ p.image_file.url }}" alt="{{ p.title }}" href="{% url 'artworkDetail' p.pk %}">
             <div class="overlay">
                 <h3>{{p.title}} </h3>
                 <p>{{p.date}}</p>

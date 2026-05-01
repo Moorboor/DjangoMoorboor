@@ -48,7 +48,7 @@ class SceneManager {
     }
 
     async _FetchProductData(){
-        const response = await fetch(`/api/products/`);
+        const response = await fetch(`/api/artworks/`);
         this.productData = await response.json();
     }
 

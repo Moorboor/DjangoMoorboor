@@ -15,5 +15,5 @@ class ProductSerializer(serializers.ModelSerializer):
     
     def get_url(self, product):
         request = self.context.get("request")
-        path = reverse("artDetail", kwargs={"pk": product.pk})
+        path = reverse("artworkDetail", kwargs={"pk": product.pk})
         return request.build_absolute_uri(path) if request else path

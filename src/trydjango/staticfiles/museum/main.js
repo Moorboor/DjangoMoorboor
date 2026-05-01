@@ -20,7 +20,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 
 
 
-const productData = await fetch('/api/products/').then(r => r.json());
+const productData = await fetch('/api/artworks/').then(r => r.json());
 
 
 

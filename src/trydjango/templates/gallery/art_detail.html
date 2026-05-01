@@ -11,7 +11,7 @@
     <img src="{{ product.image_file.url }}" alt="{{ product.title }}" class="image-wrapper">
     <p><strong>Date:</strong> {{ product.date }}</p>
     <p>{{ product.description|linebreaks }}</p>
-    <p><a href="{% url 'map-detail' %}">← Back to gallery</a></p>
+    <p><a href="{% url 'gallery' %}">← Back to gallery</a></p>
 </div>
 
 
@@ -43,71 +43,6 @@
     </div>
   {% endif %}
 {% endwith %}
-
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Upload</button>
-</form>
-
-
-<div id="map"></div>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script type="module">
-    (async () => {
-    const products = await fetch('/api/products/').then(r => r.json());
-    const coords = JSON.parse(document.getElementById('coords-json').textContent);
-    const parts = coords.split(",");
-    const lat = parts[0];
-    const lng = parts[1];
-    const map = L.map('map')   // you can change the zoom
-    
-      // Satellite imagery (base)
-    L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      {
-        attribution:
-          'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN',
-        maxZoom: 19
-      }
-    ).addTo(map);
-
-    // Labels overlay (names/roads/places on top of satellite)
-    L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-      {
-        attribution: 'Labels &copy; Esri',
-        maxZoom: 19
-      }
-    ).addTo(map);
-        
-    for (const p of products) {
-        const coords = p.geocoor.split(",");
-
-        const popupContent = `
-        <div class="popup" style="background-color: black; color: white; padding: 10px;">
-            <h3> <a href="${p.url}">${p.title}</a> </h3>
-            <img src="${p.image_url}" alt="${p.title}" style="width: 150px;">
-           
-          </div>
-        `;
-
-        L.marker([coords[0], coords[1]])
-        .addTo(map)
-        .bindPopup(popupContent)
-        .openPopup();
-    }
-    map.setView([lat, lng], 14);
-
-    {% comment %} L.marker([lat, lng])
-    .addTo(map)
-    .bindPopup(`{{ product.title|escapejs }}`)
-    .openPopup(); 
-     {% endcomment %}
-})();
-</script>
 
 <script>
 (function () {
@@ -160,6 +95,71 @@
   });
 
   render();
+})();
+</script>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Upload</button>
+</form>
+
+
+<div id="map"></div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script type="module">
+    (async () => {
+    const products = await fetch('/api/artworks/').then(r => r.json());
+    const coords = JSON.parse(document.getElementById('coords-json').textContent);
+    const parts = coords.split(",");
+    const lat = parts[0];
+    const lng = parts[1];
+    const map = L.map('map')   // you can change the zoom
+    
+      // Satellite imagery (base)
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution:
+          'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN',
+        maxZoom: 19
+      }
+    ).addTo(map);
+
+    // Labels overlay (names/roads/places on top of satellite)
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Labels &copy; Esri',
+        maxZoom: 19
+      }
+    ).addTo(map);
+        
+    for (const p of products) {
+        const coords = p.geocoor.split(",");
+
+        const popupContent = `
+        <div class="popup" style="background-color: black; color: white; padding: 10px;">
+            <h3> <a href="${p.url}">${p.title}</a> </h3>
+            <img src="${p.image_url}" alt="${p.title}" style="width: 150px;">
+           
+          </div>
+        `;
+
+        L.marker([coords[0], coords[1]])
+        .addTo(map)
+        .bindPopup(popupContent)
+        .openPopup();
+    }
+    map.setView([lat, lng], 14);
+
+    {% comment %} L.marker([lat, lng])
+    .addTo(map)
+    .bindPopup(`{{ product.title|escapejs }}`)
+    .openPopup(); 
+     {% endcomment %}
 })();
 </script>
 
