@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from maps.views import ProductListAPI, map_view, museum_view, gallery_view, artwork_view, home_view, contact_view, threeTest_view
+from maps.views import ProductListAPI, map_view, museum_view, gallery_view, artwork_view, home_view, contact_view, threeTest_view, pdf_viewer_view, philosophy_view
 from django.views.static import serve
 
 from django.conf import settings
@@ -36,6 +36,8 @@ urlpatterns = [
     path('home/threeTest/', threeTest_view, name='threeTest'),
     path('gallery/map/', map_view, name='map'),
     path('museum/', museum_view, name="museum"),
+    path('philosophy/<str:filename>/', pdf_viewer_view, name='show_pdf'),
+    path('philosophy', philosophy_view, name='philosophy'),
 ] 
 if settings.DEBUG: 
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

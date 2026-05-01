@@ -1,14 +1,21 @@
-<!doctype html>
-
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Moorboor</title>
+    {% load static %}
+    <!-- Main stylesheet, etc. -->
+    {% include 'navbar.html' %}
+    
+    {% block head_extra %}
+    <!-- Page-specific CSS or scripts will go here -->
+    {% endblock %}
 </head>
 <body>
-    {% include 'navbar.html' %}
-    <!-- <h1> I'm a Nav bar </h1> -->
-    {% block content %} 
 
+    {% block content %}
+    <!-- Page content will go here -->
     {% endblock %}
+
 </body>
 </html>

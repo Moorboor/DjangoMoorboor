@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+
+{% load static %}
+{% block content %} 
+
+
+<h1>Available Documents</h1>
+<ul>
+    <li>
+        <a href="{% url 'show_pdf' filename='Philosophie_des_Bewusstseins_Aufsatz.pdf' %}">
+            Moralisches Bootstrapping
+        </a>
+    </li>
+    <li>
+        <a href="{% url 'show_pdf' filename='Philosophy_of_Action_essay.pdf' %}">
+            Collective agency
+        </a>
+    </li>
+    <li>
+        <a href="{% url 'show_pdf' filename='Philosophy_of_Metaethics_essay.pdf' %}">
+            Fictionalism
+        </a>
+    </li>
+</ul>
+
+{% endblock %}

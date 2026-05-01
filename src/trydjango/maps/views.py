@@ -68,3 +68,16 @@ def threeTest_view(request, *args, **kwargs):
 
 def contact_view(request, *args, **kwargs):
     return render(request, "contacts.html", {})
+
+def philosophy_view(request, *args, **kwargs):
+    return render(request, "philosophy.html", {})
+
+
+def pdf_viewer_view(request, filename, *args, **kwargs):
+    pdf_path = f'philosophy/{filename}'
+    
+    context = {
+        'pdf_path': pdf_path,
+        'pdf_name': filename.replace('_', ' ').replace('.pdf', '').title()
+    }
+    return render(request, 'pdfViewer.html', context)
