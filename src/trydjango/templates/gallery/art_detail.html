@@ -194,11 +194,11 @@
 })();
 </script>
 
-<form method="post" enctype="multipart/form-data">
+{% comment %} <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   {{ form.as_p }}
   <button type="submit">Upload</button>
-</form>
+</form> {% endcomment %}
 
 <div id="map"></div>
 
