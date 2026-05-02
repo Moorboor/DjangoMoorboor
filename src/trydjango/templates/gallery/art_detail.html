@@ -41,7 +41,8 @@
 {% with imgs=product.carousel_images.all %}
   {% if imgs %}
     <div class="carousel" id="productCarousel">
-      {% if imgs|length > 1 %}
+
+      {% if imgs|length > 4 %}
         <button class="carousel-btn prev" type="button" aria-label="Previous">&#8249;</button>
       {% endif %}
 
@@ -58,15 +59,14 @@
         </div>
       </div>
 
-      {% if imgs|length > 1 %}
+      {% if imgs|length > 4 %}
         <button class="carousel-btn next" type="button" aria-label="Next">&#8250;</button>
       {% endif %}
+
     </div>
   {% endif %}
 {% endwith %}
 
-
-{# ── Carousel JS (unchanged from before) ───────────────────── #}
 <script>
 (function () {
   const root = document.getElementById("productCarousel");
@@ -80,9 +80,11 @@
 
   let index = 0;
 
+  // ✅ Fixed: matches CSS calc(100% / 4)
   function slidesPerView() {
-    return window.matchMedia("(max-width: 700px)").matches ? 1 : 3;
+    return window.matchMedia("(max-width: 700px)").matches ? 1 : 4;
   }
+
   function maxIndex()   { return Math.max(0, slides.length - slidesPerView()); }
   function slideWidth() { return slides[0].getBoundingClientRect().width; }
 
@@ -96,7 +98,7 @@
   if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1));
   if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1));
 
-  // Touch swipe (carousel only)
+  // Touch swipe
   let cTouchX = 0, cTouchY = 0, cDragging = false;
   const CSWIPE = 50;
 
@@ -119,10 +121,10 @@
     if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);
   }, { passive: true });
 
-  // Mouse drag (carousel only)
+  // Mouse drag
   let mStartX = 0, mDown = false;
-  viewport.addEventListener("mousedown",  (e) => { mStartX = e.clientX; mDown = true; e.preventDefault(); });
-  window.addEventListener("mouseup",      (e) => {
+  viewport.addEventListener("mousedown", (e) => { mStartX = e.clientX; mDown = true; e.preventDefault(); });
+  window.addEventListener("mouseup", (e) => {
     if (!mDown) return; mDown = false;
     const diff = mStartX - e.clientX;
     if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);

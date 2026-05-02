@@ -30,8 +30,8 @@ def gallery_view(request, *args, **kwargs):
 def artwork_view(request, pk):
     
     product = get_object_or_404(Product.objects.select_related("artist").prefetch_related("carousel_images"),pk=pk)
-    prev_product = Product.objects.filter(pk__lt=pk).order_by('-pk').first()
-    next_product = Product.objects.filter(pk__gt=pk).order_by('pk').first()
+    prev_product = Product.objects.filter(date__lt=product.date).order_by('-date').first()
+    next_product = Product.objects.filter(date__gt=product.date).order_by('date').first()
     
     if request.method == "POST":
         form = ProductImageForm(request.POST, request.FILES)
