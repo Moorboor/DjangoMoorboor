@@ -97,7 +97,7 @@ p {
 
 .carousel {
   position: relative;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 1rem auto;
 }
 
@@ -113,7 +113,7 @@ p {
 }
 
 .carousel-slide {
-  flex: 0 0 calc(100% / 4); /* 3 images visible */
+  flex: 0 0 calc(100% / 3); /* 3 images visible */
   position: relative;
   background: #000;
 }
