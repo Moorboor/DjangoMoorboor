@@ -1,13 +1,16 @@
-from .models import ProductImage
-
+# forms.py
 from django import forms
+from .models import ProductMedia
 
 
-class ProductImageForm(forms.ModelForm):
+class ProductMediaForm(forms.ModelForm):  
+
     class Meta:
-        model = ProductImage
+        model = ProductMedia
         fields = [
-            "image",
+            "media_type",  
+            "image",       
+            "video",       
             "caption",
-            "order"
+            "order",
         ]

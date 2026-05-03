@@ -5,7 +5,7 @@ from django.views.generic import DetailView
 
 from .models import Product
 from .serializers import ProductSerializer
-from .forms import ProductImageForm
+from .forms import ProductMediaForm
 
 
 class ProductListAPI(APIView):
@@ -34,14 +34,14 @@ def artwork_view(request, pk):
     next_product = Product.objects.filter(date__gt=product.date).order_by('date').first()
     
     if request.method == "POST":
-        form = ProductImageForm(request.POST, request.FILES)
+        form = ProductMediaForm(request.POST, request.FILES)
         if form.is_valid():
             obj = form.save(commit=False)
             obj.product = product         
             obj.save()
             return redirect("artworkDetail", pk=product.pk)  # go back to product page
     else:
-        form = ProductImageForm()
+        form = ProductMediaForm()
     
     context = {
         'product':      product,
