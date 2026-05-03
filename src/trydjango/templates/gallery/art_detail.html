@@ -38,6 +38,8 @@
     <p><a href="{% url 'gallery' %}">← Back to gallery</a></p>
 </div>
 
+{# ── start carousel ────────────────────────────────────────── #}
+
 {% with imgs=product.carousel_images.all %}
   {% if imgs %}
     <div class="carousel" id="productCarousel">
@@ -48,14 +50,30 @@
 
       <div class="carousel-viewport">
         <div class="carousel-track">
-          {% for img in imgs %}
+
+          {% for item in imgs %}
             <div class="carousel-slide">
-              <img src="{{ img.image.url }}" alt="{{ img.caption|default:product.title }}">
-              {% if img.caption %}
-                <div class="carousel-caption">{{ img.caption }}</div>
+
+              {% if item.media_type == "image" %}
+                <img src="{{ item.image.url }}"
+                    alt="{{ item.caption|default:product.title }}"
+                    data-lightbox="{{ item.image.url }}"   {# ✅ marks it as clickable #}
+                    style="cursor:zoom-in;">
+              {% elif item.media_type == "video" %}
+                <video controls preload="metadata"
+                      style="max-width:100%;max-height:100%;display:block;">
+                  <source src="{{ item.video.url }}">
+                  Your browser does not support video.
+                </video>
               {% endif %}
+
+              {% if item.caption %}
+                <div class="carousel-caption">{{ item.caption }}</div>
+              {% endif %}
+
             </div>
-          {% endfor %}
+          {% endfor %}   {# ✅ only one endfor, in the right place #}
+
         </div>
       </div>
 
@@ -63,9 +81,11 @@
         <button class="carousel-btn next" type="button" aria-label="Next">&#8250;</button>
       {% endif %}
 
-    </div>
+    </div>   {# ✅ closes .carousel — after all buttons and slides #}
   {% endif %}
 {% endwith %}
+
+
 
 <script>
 (function () {
@@ -133,72 +153,103 @@
   window.addEventListener("resize", () => goTo(index));
   goTo(0);
 })();
-</script>
+</script> 
 
-
-{# ── Product-to-product navigation JS ──────────────────────── #}
 <script>
 (function () {
-  // Read URLs directly from the anchor elements rendered by Django
   const prevUrl = document.getElementById("prevProductBtn")?.href ?? null;
   const nextUrl = document.getElementById("nextProductBtn")?.href ?? null;
 
   function navigate(url) {
-    if (url) window.location.href = url;
+    if (!url) return;
+    window.location.href = url;
   }
 
-  /* ── keyboard: ArrowLeft / ArrowRight ──────────────────────
-     Only fires when the carousel is NOT visible on screen,
-     so the two handlers never clash.                          */
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  // ── Swipe ─────────────────────────────────────────────────────
+  let startX = 0, startY = 0, dragX = 0;
+  let active = false, axis = null, fromCarousel = false;
+  const THRESHOLD = 0.35;  // 35% of viewport → commit navigation
 
-    // Ignore when user is typing
-    const tag = document.activeElement.tagName;
-    if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+  function applyDrag(dx) {
+    document.body.style.transition = "none";
+    document.body.style.transform  = `translateX(${dx}px)`;
+    window.dispatchEvent(new CustomEvent("navdrag", { detail: { dx } }));  
+  }
 
-    // Yield to the carousel keyboard handler while carousel is in view
-    const carousel = document.getElementById("productCarousel");
-    if (carousel) {
-      const r = carousel.getBoundingClientRect();
-      if (r.top < window.innerHeight && r.bottom > 0) return;
-    }
+  function snapBack() {
+    document.body.style.transition = "transform 0.3s ease";
+    document.body.style.transform  = "translateX(0)";
+    window.dispatchEvent(new CustomEvent("navsnap"));  
+    document.body.addEventListener(
+      "transitionend",
+      () => { document.body.style.transform = ""; document.body.style.transition = ""; },
+      { once: true }
+    );
+  }
 
-    e.preventDefault();
-    if (e.key === "ArrowLeft")  navigate(prevUrl);  // ← prev product
-    if (e.key === "ArrowRight") navigate(nextUrl);  // → next product
-  });
+  function commitNav(direction) {
+    const vw = window.innerWidth;
+    document.body.style.transition = "transform 0.3s ease";
+    document.body.style.transform  = `translateX(${direction === "prev" ? vw : -vw}px)`;
+    window.dispatchEvent(new CustomEvent("navsnap"));  
+    document.body.addEventListener(
+      "transitionend",
+      () => navigate(direction === "prev" ? prevUrl : nextUrl),
+      { once: true }
+    );
+  }
 
-  /* ── page-level swipe (skips touches that start in the carousel) ── */
-  const PAGE_SWIPE = 60;   // px threshold
-  let pTouchX = 0, pTouchY = 0, fromCarousel = false;
-
-  document.addEventListener("touchstart", (e) => {
+  document.addEventListener("touchstart", e => {
     fromCarousel = !!e.target.closest("#productCarousel");
-    pTouchX      = e.changedTouches[0].clientX;
-    pTouchY      = e.changedTouches[0].clientY;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragX  = 0;
+    active = true;
+    axis   = null;
   }, { passive: true });
 
-  document.addEventListener("touchend", (e) => {
-    if (fromCarousel) return;  // let the carousel handle it
+  document.addEventListener("touchmove", e => {
+    if (!active || fromCarousel) return;
 
-    const dx = pTouchX - e.changedTouches[0].clientX;   // + → swipe left
-    const dy = Math.abs(pTouchY - e.changedTouches[0].clientY);
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
 
-    if (dy > Math.abs(dx))      return;  // mostly vertical → ignore
-    if (Math.abs(dx) < PAGE_SWIPE) return;  // too short → ignore
+    // lock axis on first real movement
+    if (!axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+      if (axis === "y") { active = false; return; }
+    }
 
-    navigate(dx > 0 ? nextUrl : prevUrl);
-    //        ← swipe left = next    ← swipe right = prev
+    // ignore swipe toward a missing neighbour
+    let d = dx;
+    if (d > 0 && !prevUrl) d = 0;
+    if (d < 0 && !nextUrl) d = 0;
+
+    dragX = d;
+    applyDrag(d);
+  }, { passive: true });
+
+  document.addEventListener("touchend", () => {
+    if (!active || axis !== "x") { active = false; return; }
+    active = false;
+
+    const ratio = Math.abs(dragX) / window.innerWidth;
+
+    if      (dragX > 0 && ratio >= THRESHOLD) commitNav("prev");
+    else if (dragX < 0 && ratio >= THRESHOLD) commitNav("next");
+    else    snapBack();  // ❌ not far enough — snap back
+
+    dragX = 0;
   }, { passive: true });
 })();
 </script>
 
-{% comment %} <form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   {{ form.as_p }}
   <button type="submit">Upload</button>
-</form> {% endcomment %}
+</form>
 
 <div id="map"></div>
 
@@ -235,5 +286,100 @@
   map.setView([lat, lng], 14);
 })();
 </script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const lightbox  = document.getElementById("lightbox");
+  const lbImg     = document.getElementById("lightbox-img");
+  const lbClose   = document.getElementById("lightbox-close");
+  const lbPrev    = document.getElementById("lightbox-prev");
+  const lbNext    = document.getElementById("lightbox-next");
+
+  // ── Collect all lightbox-able images in order ───────────────
+  let images      = [];  // array of { src, alt }
+  let currentIndex = 0;
+
+  function buildImageList() {
+    images = Array.from(
+      document.querySelectorAll("#productCarousel [data-lightbox]")
+    ).map(img => ({ src: img.dataset.lightbox, alt: img.alt }));
+  }
+
+  // ── Open at a specific index ─────────────────────────────────
+  function openAt(index) {
+    currentIndex = Math.max(0, Math.min(images.length - 1, index));
+    lbImg.src    = images[currentIndex].src;
+    lbImg.alt    = images[currentIndex].alt;
+    lightbox.classList.add("open");
+    document.body.style.overflow = "hidden";
+    updateArrows();
+  }
+
+  // ── Disable arrows at the ends ───────────────────────────────
+  function updateArrows() {
+    lbPrev.disabled = currentIndex <= 0;
+    lbNext.disabled = currentIndex >= images.length - 1;
+  }
+
+  function close() {
+    lightbox.classList.remove("open");
+    lbImg.src = "";
+    document.body.style.overflow = "";
+  }
+
+  // ── Click image in carousel ──────────────────────────────────
+  document.getElementById("productCarousel")
+    .addEventListener("click", e => {
+      const img = e.target.closest("[data-lightbox]");
+      if (!img) return;
+
+      buildImageList();  // refresh in case DOM changed
+
+      // Find which index was clicked
+      const allImgs = Array.from(
+        document.querySelectorAll("#productCarousel [data-lightbox]")
+      );
+      const clickedIndex = allImgs.indexOf(img);
+      openAt(clickedIndex);
+    });
+
+  // ── Arrow buttons ────────────────────────────────────────────
+  lbPrev.addEventListener("click", e => {
+    e.stopPropagation();  // don't trigger backdrop close
+    openAt(currentIndex - 1);
+  });
+
+  lbNext.addEventListener("click", e => {
+    e.stopPropagation();
+    openAt(currentIndex + 1);
+  });
+
+  // ── Backdrop click → close ───────────────────────────────────
+  lightbox.addEventListener("click", e => {
+    if (e.target === lightbox) close();
+  });
+
+  // ── Close button ─────────────────────────────────────────────
+  lbClose.addEventListener("click", close);
+
+  // ── Keyboard ─────────────────────────────────────────────────
+  document.addEventListener("keydown", e => {
+    if (!lightbox.classList.contains("open")) return;
+    if (e.key === "Escape")     close();
+    if (e.key === "ArrowLeft")  openAt(currentIndex - 1);
+    if (e.key === "ArrowRight") openAt(currentIndex + 1);
+  });
+});
+</script>
+
+
+{# ── Lightbox overlay ───────────────────────────────────────── #}
+<div id="lightbox" aria-modal="true" role="dialog" aria-label="Image fullscreen">
+  <button id="lightbox-close" aria-label="Close">&#215;</button>
+  <button id="lightbox-prev" aria-label="Previous">&#8249;</button>  {# ✅ new #}
+  <img id="lightbox-img" src="" alt="">
+  <button id="lightbox-next" aria-label="Next">&#8250;</button>      {# ✅ new #}
+</div>
 
 {% endblock content %}
