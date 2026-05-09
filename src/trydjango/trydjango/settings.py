@@ -14,6 +14,12 @@ from decouple import config
 from pathlib import Path
 from django.core.management.utils import get_random_secret_key
 import os
+import mimetypes
+
+mimetypes.add_type("video/mp4",  ".mp4",  True)
+mimetypes.add_type("video/webm", ".webm", True)
+mimetypes.add_type("image/webp", ".webp", True)  # good to add this too
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

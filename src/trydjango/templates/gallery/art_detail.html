@@ -29,17 +29,21 @@
   {% endif %}
 
 </div>
-{# ── end product nav ────────────────────────────────────────── #}
 
 <div class="image-wrapper">
-    <img src="{{ product.image_file.url }}" alt="{{ product.title }}" class="image-wrapper">
+    <img src="{{ product.image_file.url }}"
+         alt="{{ product.title }}"
+         class="image-wrapper"
+         data-lightbox="{{ product.image_file.url }}"
+         data-caption=""
+         data-main-image
+         style="cursor:zoom-in;">
     <p><strong>Date:</strong> {{ product.date }}</p>
     <p>{{ product.description|linebreaks }}</p>
     <p><a href="{% url 'gallery' %}">← Back to gallery</a></p>
 </div>
 
-{# ── start carousel ────────────────────────────────────────── #}
-
+{# ── Carousel ───────────────────────────────────────────────── #}
 {% with imgs=product.carousel_images.all %}
   {% if imgs %}
     <div class="carousel" id="productCarousel">
@@ -56,15 +60,24 @@
 
               {% if item.media_type == "image" %}
                 <img src="{{ item.image.url }}"
-                    alt="{{ item.caption|default:product.title }}"
-                    data-lightbox="{{ item.image.url }}"   {# ✅ marks it as clickable #}
-                    style="cursor:zoom-in;">
+                     alt="{{ item.caption|default:product.title }}"
+                     data-lightbox="{{ item.image.url }}"
+                     data-caption="{{ item.caption }}"
+                     style="cursor:zoom-in;">
+
               {% elif item.media_type == "video" %}
-                <video controls preload="metadata"
-                      style="max-width:100%;max-height:100%;display:block;">
-                  <source src="{{ item.video.url }}">
-                  Your browser does not support video.
-                </video>
+                <div style="position:relative;">
+                  <video controls preload="metadata"
+                         style="max-width:100%;max-height:100%;display:block;">
+                    <source src="{{ item.video.url }}" type="video/mp4">
+                    Your browser does not support video.
+                  </video>
+                  {# ✅ expand button opens video in lightbox #}
+                  <button class="video-lightbox-btn"
+                          data-lightbox-video="{{ item.video.url }}"
+                          data-caption="{{ item.caption }}"
+                          aria-label="Open fullscreen">⛶</button>
+                </div>
               {% endif %}
 
               {% if item.caption %}
@@ -72,7 +85,7 @@
               {% endif %}
 
             </div>
-          {% endfor %}   {# ✅ only one endfor, in the right place #}
+          {% endfor %}
 
         </div>
       </div>
@@ -81,12 +94,37 @@
         <button class="carousel-btn next" type="button" aria-label="Next">&#8250;</button>
       {% endif %}
 
-    </div>   {# ✅ closes .carousel — after all buttons and slides #}
+    </div>
   {% endif %}
 {% endwith %}
 
+{# ── Lightbox ───────────────────────────────────────────────── #}
+<div id="lightbox" aria-modal="true" role="dialog" aria-label="Fullscreen media">
+  <button id="lightbox-close" aria-label="Close">&#215;</button>
+  <button id="lightbox-prev"  aria-label="Previous">&#8249;</button>
 
+  {# ✅ both elements present — one shown at a time #}
+  <img id="lightbox-img" src="" alt="">
+  <video id="lightbox-video" controls style="display:none;max-width:90vw;max-height:90vh;">
+    <source id="lightbox-video-src" src="" type="video/mp4">
+  </video>
 
+  <p id="lightbox-caption"></p>
+  <button id="lightbox-next"  aria-label="Next">&#8250;</button>
+</div>
+
+{% comment %} <form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Upload</button>
+</form> {% endcomment %}
+
+<div id="map"></div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+{# ── Carousel script ────────────────────────────────────────── #}
 <script>
 (function () {
   const root = document.getElementById("productCarousel");
@@ -100,11 +138,9 @@
 
   let index = 0;
 
-  // ✅ Fixed: matches CSS calc(100% / 4)
   function slidesPerView() {
     return window.matchMedia("(max-width: 700px)").matches ? 1 : 4;
   }
-
   function maxIndex()   { return Math.max(0, slides.length - slidesPerView()); }
   function slideWidth() { return slides[0].getBoundingClientRect().width; }
 
@@ -118,13 +154,12 @@
   if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1));
   if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1));
 
-  // Touch swipe
   let cTouchX = 0, cTouchY = 0, cDragging = false;
   const CSWIPE = 50;
 
   viewport.addEventListener("touchstart", (e) => {
-    cTouchX   = e.changedTouches[0].clientX;
-    cTouchY   = e.changedTouches[0].clientY;
+    cTouchX = e.changedTouches[0].clientX;
+    cTouchY = e.changedTouches[0].clientY;
     cDragging = true;
   }, { passive: true });
 
@@ -141,7 +176,6 @@
     if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);
   }, { passive: true });
 
-  // Mouse drag
   let mStartX = 0, mDown = false;
   viewport.addEventListener("mousedown", (e) => { mStartX = e.clientX; mDown = true; e.preventDefault(); });
   window.addEventListener("mouseup", (e) => {
@@ -153,79 +187,64 @@
   window.addEventListener("resize", () => goTo(index));
   goTo(0);
 })();
-</script> 
+</script>
 
+{# ── Page swipe script ──────────────────────────────────────── #}
 <script>
 (function () {
   const prevUrl = document.getElementById("prevProductBtn")?.href ?? null;
   const nextUrl = document.getElementById("nextProductBtn")?.href ?? null;
 
-  function navigate(url) {
-    if (!url) return;
-    window.location.href = url;
-  }
+  function navigate(url) { if (!url) return; window.location.href = url; }
 
-  // ── Swipe ─────────────────────────────────────────────────────
   let startX = 0, startY = 0, dragX = 0;
   let active = false, axis = null, fromCarousel = false;
-  const THRESHOLD = 0.35;  // 35% of viewport → commit navigation
+  const THRESHOLD = 0.35;
 
   function applyDrag(dx) {
     document.body.style.transition = "none";
     document.body.style.transform  = `translateX(${dx}px)`;
-    window.dispatchEvent(new CustomEvent("navdrag", { detail: { dx } }));  
+    window.dispatchEvent(new CustomEvent("navdrag", { detail: { dx } }));
   }
 
   function snapBack() {
     document.body.style.transition = "transform 0.3s ease";
     document.body.style.transform  = "translateX(0)";
-    window.dispatchEvent(new CustomEvent("navsnap"));  
-    document.body.addEventListener(
-      "transitionend",
+    window.dispatchEvent(new CustomEvent("navsnap"));
+    document.body.addEventListener("transitionend",
       () => { document.body.style.transform = ""; document.body.style.transition = ""; },
-      { once: true }
-    );
+      { once: true });
   }
 
   function commitNav(direction) {
     const vw = window.innerWidth;
     document.body.style.transition = "transform 0.3s ease";
     document.body.style.transform  = `translateX(${direction === "prev" ? vw : -vw}px)`;
-    window.dispatchEvent(new CustomEvent("navsnap"));  
-    document.body.addEventListener(
-      "transitionend",
+    window.dispatchEvent(new CustomEvent("navsnap"));
+    document.body.addEventListener("transitionend",
       () => navigate(direction === "prev" ? prevUrl : nextUrl),
-      { once: true }
-    );
+      { once: true });
   }
 
   document.addEventListener("touchstart", e => {
     fromCarousel = !!e.target.closest("#productCarousel");
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    dragX  = 0;
-    active = true;
-    axis   = null;
+    dragX  = 0; active = true; axis = null;
   }, { passive: true });
 
   document.addEventListener("touchmove", e => {
     if (!active || fromCarousel) return;
-
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
-
-    // lock axis on first real movement
     if (!axis) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
       if (axis === "y") { active = false; return; }
     }
-
-    // ignore swipe toward a missing neighbour
     let d = dx;
     if (d > 0 && !prevUrl) d = 0;
     if (d < 0 && !nextUrl) d = 0;
-
     dragX = d;
     applyDrag(d);
   }, { passive: true });
@@ -233,28 +252,140 @@
   document.addEventListener("touchend", () => {
     if (!active || axis !== "x") { active = false; return; }
     active = false;
-
     const ratio = Math.abs(dragX) / window.innerWidth;
-
     if      (dragX > 0 && ratio >= THRESHOLD) commitNav("prev");
     else if (dragX < 0 && ratio >= THRESHOLD) commitNav("next");
-    else    snapBack();  // ❌ not far enough — snap back
-
+    else    snapBack();
     dragX = 0;
   }, { passive: true });
 })();
 </script>
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Upload</button>
-</form>
+{# ── Lightbox script ────────────────────────────────────────── #}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const lightbox     = document.getElementById("lightbox");
+  const lbImg        = document.getElementById("lightbox-img");
+  const lbVideo      = document.getElementById("lightbox-video");      // ✅ new
+  const lbVideoSrc   = document.getElementById("lightbox-video-src");  // ✅ new
+  const lbClose      = document.getElementById("lightbox-close");
+  const lbPrev       = document.getElementById("lightbox-prev");
+  const lbNext       = document.getElementById("lightbox-next");
+  const lbCaption    = document.getElementById("lightbox-caption");
 
-<div id="map"></div>
+  let images       = [];
+  let currentIndex = 0;
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  // ── buildImageList — collect slides in DOM order (images + videos) ──
+  function buildImageList() {
+    images = [];
+
+    // Main image is always index 0
+    const mainImg = document.querySelector("[data-main-image]");
+    if (mainImg) {
+      images.push({ type: "image", src: mainImg.dataset.lightbox, alt: mainImg.alt, caption: "" });
+    }
+
+    // ✅ Walk slides in order — picks up both images and videos
+    document.querySelectorAll("#productCarousel .carousel-slide").forEach(slide => {
+      const img    = slide.querySelector("[data-lightbox]");
+      const vidBtn = slide.querySelector("[data-lightbox-video]");
+
+      if (img) {
+        images.push({
+          type:    "image",
+          src:     img.dataset.lightbox,
+          alt:     img.alt,
+          caption: img.dataset.caption || "",
+        });
+      } else if (vidBtn) {
+        images.push({
+          type:    "video",
+          src:     vidBtn.dataset.lightboxVideo,
+          caption: vidBtn.dataset.caption || "",
+        });
+      }
+    });
+  }
+
+  // ── openAt — show image OR video ────────────────────────────
+  function openAt(index) {
+    currentIndex  = Math.max(0, Math.min(images.length - 1, index));
+    const item    = images[currentIndex];
+
+    if (item.type === "video") {
+      // ✅ Show video, hide image
+      lbImg.style.display      = "none";
+      lbVideo.style.display    = "block";
+      lbVideoSrc.src           = item.src;
+      lbVideo.load();           // load the new source
+    } else {
+      // ✅ Show image, hide video
+      lbVideo.pause();
+      lbVideo.style.display    = "none";
+      lbImg.style.display      = "block";
+      lbImg.src                = item.src;
+      lbImg.alt                = item.alt || "";
+    }
+
+    lbCaption.textContent = item.caption;
+    lightbox.classList.add("open");
+    document.body.style.overflow = "hidden";
+    updateArrows();
+  }
+
+  // ── close — pause + clear both ──────────────────────────────
+  function close() {
+    lightbox.classList.remove("open");
+    lbImg.src             = "";
+    lbVideo.pause();
+    lbVideoSrc.src        = "";
+    lbVideo.load();        // reset player
+    lbCaption.textContent = "";
+    document.body.style.overflow = "";
+  }
+
+  function updateArrows() {
+    lbPrev.disabled = currentIndex <= 0;
+    lbNext.disabled = currentIndex >= images.length - 1;
+  }
+
+  // ── Click main image ─────────────────────────────────────────
+  document.querySelector("[data-main-image]")
+    ?.addEventListener("click", () => { buildImageList(); openAt(0); });
+
+  // ── Click carousel image or video expand button ──────────────
+  document.getElementById("productCarousel")
+    ?.addEventListener("click", e => {
+      const img    = e.target.closest("[data-lightbox]");
+      const vidBtn = e.target.closest("[data-lightbox-video]");
+      if (!img && !vidBtn) return;
+
+      buildImageList();
+
+      // Find which slide was clicked → maps to images index (+1 for main image)
+      const allSlides    = Array.from(document.querySelectorAll("#productCarousel .carousel-slide"));
+      const clickedSlide = (img || vidBtn).closest(".carousel-slide");
+      const slideIndex   = allSlides.indexOf(clickedSlide);
+      openAt(slideIndex + 1);  // +1 because main image is index 0
+    });
+
+  lbPrev.addEventListener("click", e => { e.stopPropagation(); openAt(currentIndex - 1); });
+  lbNext.addEventListener("click", e => { e.stopPropagation(); openAt(currentIndex + 1); });
+
+  lightbox.addEventListener("click", e => { if (e.target === lightbox) close(); });
+  lbClose.addEventListener("click", close);
+
+  document.addEventListener("keydown", e => {
+    if (!lightbox.classList.contains("open")) return;
+    if (e.key === "Escape")     close();
+    if (e.key === "ArrowLeft")  openAt(currentIndex - 1);
+    if (e.key === "ArrowRight") openAt(currentIndex + 1);
+  });
+});
+</script>
+
+{# ── Map script ─────────────────────────────────────────────── #}
 <script type="module">
 (async () => {
   const products = await fetch('/api/artworks/').then(r => r.json());
@@ -286,100 +417,5 @@
   map.setView([lat, lng], 14);
 })();
 </script>
-
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const lightbox  = document.getElementById("lightbox");
-  const lbImg     = document.getElementById("lightbox-img");
-  const lbClose   = document.getElementById("lightbox-close");
-  const lbPrev    = document.getElementById("lightbox-prev");
-  const lbNext    = document.getElementById("lightbox-next");
-
-  // ── Collect all lightbox-able images in order ───────────────
-  let images      = [];  // array of { src, alt }
-  let currentIndex = 0;
-
-  function buildImageList() {
-    images = Array.from(
-      document.querySelectorAll("#productCarousel [data-lightbox]")
-    ).map(img => ({ src: img.dataset.lightbox, alt: img.alt }));
-  }
-
-  // ── Open at a specific index ─────────────────────────────────
-  function openAt(index) {
-    currentIndex = Math.max(0, Math.min(images.length - 1, index));
-    lbImg.src    = images[currentIndex].src;
-    lbImg.alt    = images[currentIndex].alt;
-    lightbox.classList.add("open");
-    document.body.style.overflow = "hidden";
-    updateArrows();
-  }
-
-  // ── Disable arrows at the ends ───────────────────────────────
-  function updateArrows() {
-    lbPrev.disabled = currentIndex <= 0;
-    lbNext.disabled = currentIndex >= images.length - 1;
-  }
-
-  function close() {
-    lightbox.classList.remove("open");
-    lbImg.src = "";
-    document.body.style.overflow = "";
-  }
-
-  // ── Click image in carousel ──────────────────────────────────
-  document.getElementById("productCarousel")
-    .addEventListener("click", e => {
-      const img = e.target.closest("[data-lightbox]");
-      if (!img) return;
-
-      buildImageList();  // refresh in case DOM changed
-
-      // Find which index was clicked
-      const allImgs = Array.from(
-        document.querySelectorAll("#productCarousel [data-lightbox]")
-      );
-      const clickedIndex = allImgs.indexOf(img);
-      openAt(clickedIndex);
-    });
-
-  // ── Arrow buttons ────────────────────────────────────────────
-  lbPrev.addEventListener("click", e => {
-    e.stopPropagation();  // don't trigger backdrop close
-    openAt(currentIndex - 1);
-  });
-
-  lbNext.addEventListener("click", e => {
-    e.stopPropagation();
-    openAt(currentIndex + 1);
-  });
-
-  // ── Backdrop click → close ───────────────────────────────────
-  lightbox.addEventListener("click", e => {
-    if (e.target === lightbox) close();
-  });
-
-  // ── Close button ─────────────────────────────────────────────
-  lbClose.addEventListener("click", close);
-
-  // ── Keyboard ─────────────────────────────────────────────────
-  document.addEventListener("keydown", e => {
-    if (!lightbox.classList.contains("open")) return;
-    if (e.key === "Escape")     close();
-    if (e.key === "ArrowLeft")  openAt(currentIndex - 1);
-    if (e.key === "ArrowRight") openAt(currentIndex + 1);
-  });
-});
-</script>
-
-
-{# ── Lightbox overlay ───────────────────────────────────────── #}
-<div id="lightbox" aria-modal="true" role="dialog" aria-label="Image fullscreen">
-  <button id="lightbox-close" aria-label="Close">&#215;</button>
-  <button id="lightbox-prev" aria-label="Previous">&#8249;</button>  {# ✅ new #}
-  <img id="lightbox-img" src="" alt="">
-  <button id="lightbox-next" aria-label="Next">&#8250;</button>      {# ✅ new #}
-</div>
 
 {% endblock content %}
