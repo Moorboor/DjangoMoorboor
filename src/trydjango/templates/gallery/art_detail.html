@@ -38,7 +38,7 @@
          data-caption=""
          data-main-image
          style="cursor:zoom-in;">
-    <p><strong>Date:</strong> {{ product.date }}</p>
+    <p><strong>Date:</strong> {{ product.date }} <br> 👁 </strong> {{ product.visit_count }}</p>
     <p>{{ product.description|linebreaks }}</p>
     <p><a href="{% url 'gallery' %}">← Back to gallery</a></p>
 </div>

@@ -13,18 +13,6 @@ class Person(models.Model):
 
 
 class Product(models.Model):
-    country_choices = {
-        "Germany": "Germany",
-        "Svalbard": "Svalbard",
-        "Costa Rica": "Costa Rica",
-        "Nicaragua": "Nicaragua",
-        "Honduras": "Honduras",
-        "Guatemala": "Guatemala",
-        "Uzbekistan": "Uzbekistan",
-        "Vietnam": "Vietnam",
-        "Portugal": "Portugal",
-    }
-
     method_choices = {
         "Water colors": "Water colors",
         "Wax Crayons": "Wax Crayons",
@@ -43,8 +31,7 @@ class Product(models.Model):
         "Animals": "Animals",
         "Objects": "Objects",
     }
-
-    country = models.CharField(choices=country_choices)
+    
     title = models.CharField(max_length=100)
     image_file = models.ImageField(upload_to="arts/")
     description = models.TextField(null=True)
@@ -53,6 +40,7 @@ class Product(models.Model):
     aspect_ratio = models.CharField(choices={"2:1": "2:1", "1:1": "1:1", "1:2": "1:2"})
     category = models.CharField(choices=category_choices, default="Landscapes")
     geocoor = models.CharField(max_length=100, default="80.00, 80.00", blank=True)
+    visit_count = models.PositiveIntegerField(default=0)  # Denormalized count for performance
 
     artist = models.ForeignKey(
         Person,
@@ -68,6 +56,25 @@ class Product(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ProductVisit(models.Model):
+    """Track unique session visits to products"""
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name="visits"
+    )
+    session_key = models.CharField(max_length=40)
+    visited_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('product', 'session_key')
+        verbose_name = "Product Visit"
+        verbose_name_plural = "Product Visits"
+
+    def __str__(self):
+        return f"{self.product.title} — Session: {self.session_key[:10]}..."
 
 
 class ProductPerson(models.Model):

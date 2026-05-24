@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html  # ✅ imported
 
-from .models import Product, Person, ProductPerson, ProductMedia
+from .models import Product, Person, ProductPerson, ProductMedia, ProductVisit
 
 
 class ProductMediaInline(admin.TabularInline):  # ✅ renamed to match what it is
@@ -50,3 +50,9 @@ class ProductMediaAdmin(admin.ModelAdmin):
             return format_html('<video src="{}" style="height:50px;" controls></video>', obj.video.url)
         return "—"
     preview.short_description = "Preview"
+    
+@admin.register(ProductVisit)
+class ProductVisitAdmin(admin.ModelAdmin):
+    list_display = ('product', 'session_key', 'visited_at')
+    list_filter = ('product', 'visited_at')
+    readonly_fields = ('session_key', 'visited_at', 'product')
