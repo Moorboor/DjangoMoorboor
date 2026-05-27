@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from maps.views import ProductListAPI, map_view, museum_view, gallery_view, artwork_view, home_view, contact_view, threeTest_view, pdf_viewer_view, university_view
+from maps import views
 from django.views.static import serve
 
 from django.conf import settings
@@ -25,19 +25,19 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
+    path('', views.home_view, name='home'),
     path('admin/', admin.site.urls),
-    path('', home_view, name='home'),
-    path('home/', home_view, name='home'),
-    path('contacts/', contact_view, name='contacts'),
-    
-    path('gallery/', gallery_view, name='gallery'),
-    path('gallery/<int:pk>/', artwork_view, name='artworkDetail'), 
-    path('api/artworks/', ProductListAPI.as_view()),
-    path('home/threeTest/', threeTest_view, name='threeTest'),
-    path('gallery/map/', map_view, name='map'),
-    path('museum/', museum_view, name="museum"),
-    path('university/<str:filename>/', pdf_viewer_view, name='show_pdf'),
-    path('university', university_view, name='university'),
+    path('home/', views.home_view, name='home'),
+    path('contacts/', views.contact_view, name='contacts'),
+    path('gallery/', views.gallery_view, name='gallery'),
+    path('gallery/<int:pk>/', views.artwork_view, name='artworkDetail'), 
+    path('api/artworks/', views.ProductListAPI.as_view()),
+    path('home/threeTest/', views.threeTest_view, name='threeTest'),
+    path('gallery/map/', views.map_view, name='map'),
+    path('museum/', views.museum_view, name="museum"),
+    path('university/<str:filename>/', views.pdf_viewer_view, name='show_pdf'),
+    path('university', views.university_view, name='university'),
+    path('artwork/<int:pk>/comment/', views.add_comment, name='add_comment'),
 ] 
 if settings.DEBUG: 
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -4,6 +4,11 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.views.generic import DetailView
 from .models import Product, ProductVisit
 from django.db.models import F
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_http_methods
+from django.contrib import messages
+from .models import Product, Comment
+
 
 from .models import Product
 from .serializers import ProductSerializer
@@ -21,58 +26,102 @@ class ProductDetailView(DetailView):
     model = Product
     context_object_name = "product"
 
-
-def gallery_view(request, *args, **kwargs):
-    products = Product.objects.all().order_by("-date")
-    context = {"products": products} 
-    return render(request, "gallery/gallery.html", context)
-
     
+def gallery_view(request):
+    """Gallery with pagination, region and category filters"""
+    # Get filter parameters from URL (both can be empty)
+    region = request.GET.get('region', '')
+    category = request.GET.get('category', '')
     
-def artwork_view(request, pk):
+    # Base queryset
+    products = Product.objects.all().order_by('-date')
     
-    product = get_object_or_404(Product.objects.select_related("artist").prefetch_related("carousel_images"),pk=pk)
-    prev_product = Product.objects.filter(date__lt=product.date).order_by('-date').first()
-    next_product = Product.objects.filter(date__gt=product.date).order_by('date').first()
+    # Filter by region if specified
+    if region and region != '':
+        products = products.filter(region=region)
     
-    # if request.method == "POST":
-    #     form = ProductMediaForm(request.POST, request.FILES)
-    #     if form.is_valid():
-    #         obj = form.save(commit=False)
-    #         obj.product = product         
-    #         obj.save()
-    #         return redirect("artworkDetail", pk=product.pk)  # go back to product page
-    # else:
-    #     form = ProductMediaForm()  
-        
-    session_key = request.session.session_key
-    if not session_key:
-        request.session.create()
-        session_key = request.session.session_key
+    # Filter by category if specified (works independently of region)
+    if category and category != '':
+        products = products.filter(category=category)
     
-    visit_created = ProductVisit.objects.get_or_create(
-        product=product,
-        session_key=session_key
-    )[1]  # [1] gives us the boolean "created"
+    # Pagination
+    paginator = Paginator(products, 16)  # 24 items per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
     
-    # Update the denormalized visit count if this is a new visit
-    if visit_created:
-        Product.objects.filter(pk=product.pk).update(visit_count=F('visit_count') + 1)
-        product.refresh_from_db()
+    # Get all available regions
+    all_regions = ['Svalbard', 'Central America', 'Uzbekistan']
+    
+    # Get all unique categories (from entire database)
+    all_categories = Product.objects.values_list('category', flat=True).distinct().order_by('category')
     
     context = {
-        'product':      product,
+        'page_obj': page_obj,
+        'products': page_obj.object_list,
+        'region': region,
+        'category': category,
+        'regions': all_regions,
+        'all_categories': all_categories,
+    }
+    
+    return render(request, 'gallery/gallery.html', context)
+    
+
+
+
+def artwork_view(request, pk):
+    """Display artwork detail with comments"""
+    product = get_object_or_404(Product, pk=pk)
+    
+    # Increment visit count
+    product.visit_count += 1
+    product.save(update_fields=['visit_count'])
+    
+    # Get adjacent products for navigation
+    all_products = Product.objects.all().order_by('pk')
+    product_list = list(all_products)
+    
+    try:
+        current_index = product_list.index(product)
+        prev_product = product_list[current_index - 1] if current_index > 0 else None
+        next_product = product_list[current_index + 1] if current_index < len(product_list) - 1 else None
+    except ValueError:
+        prev_product = None
+        next_product = None
+    
+    # Get comments
+    comments = product.comments.filter(is_approved=True)
+    
+    context = {
+        'product': product,
         'prev_product': prev_product,
         'next_product': next_product,
-        # "form": form
+        'comments': comments,
     }
-    return render(request, "gallery/art_detail.html", context=context)
+    return render(request, 'gallery/art_detail.html', context)
 
-def home_view(request, *args, **kwargs):
-    print(args, kwargs)
-    print(request.user)
-    return render(request, "home.html", {})
 
+@require_http_methods(['POST'])
+def add_comment(request, pk):
+    """Add a comment to an artwork"""
+    product = get_object_or_404(Product, pk=pk)
+    
+    name = request.POST.get('name', '').strip()
+    email = request.POST.get('email', '').strip()
+    content = request.POST.get('content', '').strip()
+    
+    if name and email and content:
+        Comment.objects.create(
+            product=product,
+            name=name,
+            email=email,
+            content=content,
+        )
+        messages.success(request, 'Comment posted successfully!')
+    else:
+        messages.error(request, 'Please fill in all fields.')
+    
+    return redirect('artworkDetail', pk=pk)
 
 
 def museum_view(request, *args, **kwargs):
@@ -133,3 +182,35 @@ def product_detail(request, pk):
         'product': product,
     }
     return render(request, 'product_detail.html', context)
+
+
+def home_view(request, *args, **kwargs):
+    """Home page with region previews"""
+    print(args, kwargs)
+    print(request.user)
+    regions = {
+        'Svalbard': Product.objects.filter(region='Svalbard').order_by('visit_count')[:8],
+        'Central America': Product.objects.filter(region='Central America').order_by('-date')[:8],
+        'Uzbekistan': Product.objects.filter(region='Uzbekistan').order_by('-date')[:8],
+    }
+    
+    # Get counts for each region
+    counts = {
+        'Svalbard': Product.objects.filter(region='Svalbard').count(),
+        'Central America': Product.objects.filter(region='Central America').count(),
+        'Uzbekistan': Product.objects.filter(region='Uzbekistan').count(),
+    }
+    
+    # Build category_data structure
+    category_data = {}
+    for region_name in regions:
+        category_data[region_name] = {
+            'count': counts[region_name],
+            'products': regions[region_name],  # List of Product objects
+        }
+    
+    context = {
+        'categories': ['Svalbard', 'Central America', 'Uzbekistan'],  # Just the names
+        'category_data': category_data,  # Dictionary with count + products
+    }
+    return render(request, 'home.html', context)

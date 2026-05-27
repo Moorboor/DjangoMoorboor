@@ -1,28 +1,186 @@
 {% extends "base.html" %}
 {% load static %} 
+
 {% block content %}
 
 <link rel="stylesheet" type="text/css" href="{% static 'gallery/style.css' %}">
 
-<div class="grid">
-{% for p in products %}
-    <div class="card {% if p.aspect_ratio == '2:1' %}span-2-1{% elif p.aspect_ratio == '1:2' %}span-1-2{% else %}span-1-1{% endif %}">
-        <a href="{% url 'artworkDetail' p.pk %}">
-            <img src="{{ p.image_file.url }}" alt="{{ p.title }}" href="{% url 'artworkDetail' p.pk %}">
-            
-            <!-- Visit Badge -->
-            <div class="visit-badge">{{ p.visit_count }}</div>
-            
-            <div class="overlay">
-                <h3>{{p.title}} </h3>
-                <p>{{p.date}}</p>
-                <p>No. {{p.pk}}, {{p.category}}, {{p.method}}</p> 
-                <br> 
-                <p>{{p.description}}</p>
-            </div>
+<!-- ===== GALLERY HEADER ===== -->
+<section class="gallery-header">
+  <div class="header-content">
+    <h1>{{ region }}</h1>
+    <p>{{ page_obj.paginator.count }} Artworks</p>
+    
+    <!-- Back to Home -->
+    <a href="{% url 'home' %}" class="back-button">← Back to Destinations</a>
+  </div>
+  
+  <!-- Region & Category Filters -->
+  <div class="filter-controls">
+    
+    <div class="filter-group">
+      <label for="region-select">Region:</label>
+      <select id="region-select" onchange="updateGallery()">
+        <option value="">All Regions</option>
+        {% for r in regions %}
+          <option value="{{ r }}" {% if r == region %}selected{% endif %}>
+            {{ r }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="category-select">Category:</label>
+      <select id="category-select" onchange="updateGallery()">
+        <option value="">All Categories</option>
+        {% for cat in all_categories %}
+          <option value="{{ cat }}" {% if cat == category %}selected{% endif %}>
+            {{ cat }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    
+    <!-- Clear Filters Button -->
+    <button class="clear-filters" onclick="clearFilters()">Clear Filters</button>
+  </div>
+</section>
+
+<!-- ===== GALLERY GRID ===== -->
+<main class="gallery-container">
+  <div class="grid">
+    {% for p in products %}
+      <div class="card {% if p.aspect_ratio == '2:1' %}span-2-1{% elif p.aspect_ratio == '1:2' %}span-1-2{% else %}span-1-1{% endif %}">
+        <a href="{% url 'artworkDetail' p.pk %}" title="{{ p.title }}">
+          <img 
+            src="{{ p.image_file.url }}" 
+            alt="{{ p.title }}"
+            loading="lazy"
+          >
+          
+          <!-- Visit Badge -->
+          <div class="visit-badge">{{ p.visit_count }}</div>
+          
+          <!-- Overlay -->
+          <div class="overlay">
+            <h3>{{ p.title }}</h3>
+            <p><strong>{{ p.date|date:"Y" }}</strong></p>
+            <p><strong>Region:</strong> {{ p.region }}</p>
+            <p><strong>Category:</strong> {{ p.category }}</p>
+            <p><strong>Method:</strong> {{ p.method }}</p>
+            {% if p.description %}
+              <p>{{ p.description|truncatewords:15 }}</p>
+            {% endif %}
+          </div>
         </a>
-    </div> 
-{% endfor %}
-</div> 
+      </div> 
+    {% empty %}
+      <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
+        <p style="color: rgba(255,255,255,0.6); font-size: 1.1rem;">
+          No artworks found 
+          {% if region %}in {{ region }}{% endif %}
+          {% if category %}with category "{{ category }}"{% endif %}
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+</main>
+
+<!-- ===== PAGINATION ===== -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination">
+  <div class="pagination-container">
+    
+    <!-- First Page -->
+    {% if page_obj.has_previous %}
+      <a href="?region={{ region }}&category={{ category }}&page=1" class="pagination-btn first-btn">
+        ⏮ First
+      </a>
+    {% endif %}
+
+    <!-- Previous Page -->
+    {% if page_obj.has_previous %}
+      <a href="?region={{ region }}&category={{ category }}&page={{ page_obj.previous_page_number }}" class="pagination-btn prev-btn">
+        ← Previous
+      </a>
+    {% else %}
+      <span class="pagination-btn disabled">← Previous</span>
+    {% endif %}
+
+    <!-- Page Numbers -->
+    <div class="page-numbers">
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <span class="page-num active">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+          <a href="?region={{ region }}&category={{ category }}&page={{ num }}" class="page-num">{{ num }}</a>
+        {% elif num == 1 or num == page_obj.paginator.num_pages %}
+          <a href="?region={{ region }}&category={{ category }}&page={{ num }}" class="page-num">{{ num }}</a>
+          {% if num == 1 and page_obj.number > 4 %}
+            <span class="page-num dots">...</span>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Next Page -->
+    {% if page_obj.has_next %}
+      <a href="?region={{ region }}&category={{ category }}&page={{ page_obj.next_page_number }}" class="pagination-btn next-btn">
+        Next →
+      </a>
+    {% else %}
+      <span class="pagination-btn disabled">Next →</span>
+    {% endif %}
+
+    <!-- Last Page -->
+    {% if page_obj.has_next %}
+      <a href="?region={{ region }}&category={{ category }}&page={{ page_obj.paginator.num_pages }}" class="pagination-btn last-btn">
+        Last ⏭
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- Page Info -->
+  <div class="pagination-info">
+    Page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+  </div>
+</nav>
+{% endif %}
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <p>&copy; Moorboor's Art Portfolio. All rights reserved.</p>
+  <div class="social-links">
+    <a href="https://www.instagram.com/moorboor/">Instagram</a>
+    <a href="https://www.moorboory@gmail.com">Email</a>
+  </div>
+</footer>
+
+<!-- Filter Update Scripts -->
+<script>
+function updateGallery() {
+  const region = document.getElementById('region-select').value;
+  const category = document.getElementById('category-select').value;
+  
+  let url = '{% url "gallery" %}?';
+  
+  if (region) {
+    url += 'region=' + encodeURIComponent(region);
+  }
+  
+  if (category) {
+    url += (region ? '&' : '') + 'category=' + encodeURIComponent(category);
+  }
+  
+  url += '&page=1';
+  
+  window.location = url;
+}
+
+function clearFilters() {
+  window.location = '{% url "gallery" %}';
+}
+</script>
 
 {% endblock %}

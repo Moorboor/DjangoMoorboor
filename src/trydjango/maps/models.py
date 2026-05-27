@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 import os
+from django.utils import timezone
 
 
 class Person(models.Model):
@@ -13,50 +14,98 @@ class Person(models.Model):
 
 
 class Product(models.Model):
-    method_choices = {
-        "Water colors": "Water colors",
-        "Wax Crayons": "Wax Crayons",
-        "Color pencils": "Color pencils",
-        "Guache": "Guache",
-        "Mixed": "Mixed",
-        "Fine liner": "Fine liner",
-        "Crayons": "Crayons",
-        "Ink": "Ink",
-    }
-
-    category_choices = {
-        "Landscapes": "Landscapes",
-        "Architecture": "Architecture",
-        "People": "People",
-        "Animals": "Animals",
-        "Objects": "Objects",
-    }
+    REGION_CHOICES = [
+        ('Svalbard', 'Svalbard'),
+        ('Central America', 'Central America'),
+        ('Uzbekistan', 'Uzbekistan'),
+    ]
     
+    CATEGORY_CHOICES = [
+        ('Landscapes', 'Landscapes'),
+        ('Architecture', 'Architecture'),
+        ('People', 'People'),
+        ('Animals', 'Animals'),
+        ('Objects', 'Objects'),
+    ]
+    
+    METHOD_CHOICES = [
+        ('Water colors', 'Water colors'),
+        ('Wax Crayons', 'Wax Crayons'),
+        ('Color pencils', 'Color pencils'),
+        ('Guache', 'Guache'),
+        ('Mixed', 'Mixed'),
+        ('Fine liner', 'Fine liner'),
+        ('Crayons', 'Crayons'),
+        ('Ink', 'Ink'),
+    ]
+    
+    ASPECT_RATIO_CHOICES = [
+        ('2:1', '2:1'),
+        ('1:1', '1:1'),
+        ('1:2', '1:2'),
+    ]
+    
+    # Basic Info
     title = models.CharField(max_length=100)
+    description = models.TextField(null=True, blank=True)
+    
+    # Image & Display
     image_file = models.ImageField(upload_to="arts/")
-    description = models.TextField(null=True)
-    date = models.DateField(default="2025-11-16")
-    method = models.CharField(choices=method_choices, default="Water colors")
-    aspect_ratio = models.CharField(choices={"2:1": "2:1", "1:1": "1:1", "1:2": "1:2"})
-    category = models.CharField(choices=category_choices, default="Landscapes")
-    geocoor = models.CharField(max_length=100, default="80.00, 80.00", blank=True)
-    visit_count = models.PositiveIntegerField(default=0)  # Denormalized count for performance
-
+    aspect_ratio = models.CharField(
+        max_length=10,
+        choices=ASPECT_RATIO_CHOICES,
+        default='1:1'
+    )
+    
+    # Classification
+    region = models.CharField(
+        max_length=50,
+        choices=REGION_CHOICES,
+        help_text="Geographic region (Svalbard, Central America, Uzbekistan)",
+        default="Central America"
+    )
+    category = models.CharField(
+        max_length=50,
+        choices=CATEGORY_CHOICES,
+        default='Landscapes',
+        help_text="Subject category (Landscapes, Architecture, etc.)"
+    )
+    method = models.CharField(
+        max_length=50,
+        choices=METHOD_CHOICES,
+        default='Water colors',
+        help_text="Artistic method used"
+    )
+    
+    # Metadata
+    date = models.DateField(default='2025-11-16')
+    geocoor = models.CharField(
+        max_length=100,
+        default='80.00, 80.00',
+        blank=True,
+        help_text="Geographic coordinates"
+    )
+    visit_count = models.PositiveIntegerField(default=0)
+    
+    # Relations
     artist = models.ForeignKey(
         Person,
         on_delete=models.PROTECT,
-        related_name="created_products",
+        related_name='created_products',
     )
     people = models.ManyToManyField(
         Person,
-        through="ProductPerson",
-        related_name="products",
+        through='ProductPerson',
+        related_name='products',
         blank=True,
     )
-
+    
     def __str__(self):
-        return self.title
-
+        return f"{self.title} ({self.region})"
+    
+    class Meta:
+        ordering = ['-date']
+        verbose_name_plural = 'Products'
 
 class ProductVisit(models.Model):
     """Track unique session visits to products"""
@@ -146,3 +195,24 @@ class ProductMedia(models.Model):
 
     def __str__(self):
         return f"{self.product} — {self.get_media_type_display()} ({self.order})"
+    
+    
+
+class Comment(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    content = models.TextField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_approved = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Comments'
+
+    def __str__(self):
+        return f"Comment by {self.name} on {self.product.title}"

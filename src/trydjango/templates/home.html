@@ -1,7 +1,77 @@
 {% extends "base.html" %}
-
 {% load static %} 
+{% load gallery_filters %}
 
-{% block content %} 
-    <script type="module" src="{% static 'gallery/main.js' %}"></script>
-{% endblock %}^
+{% block content %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'gallery/home-style.css' %}">
+
+<!-- ===== HERO SECTION ===== -->
+<section class="hero">
+  <div class="hero-content">
+    <h1>Art of Moorboor</h1>
+    <p>Urban sketching and more</p>
+  </div>
+</section>
+
+<!-- ===== CATEGORIES SECTION ===== -->
+<section class="categories-section">
+  <h2>Browse by Destination</h2>
+  
+  <div class="categories-grid">
+    {% for category in categories %}
+      {% with category_info=category_data|get_item:category %}
+      
+      <div class="category-card">
+        <!-- Carousel/Preview -->
+        <div class="carousel-container">
+          <div class="carousel">
+            {% for product in category_info.products %}
+              <div class="carousel-slide" style="background-image: url('{{ product.image_file.url }}');">
+                <div class="carousel-overlay"></div>
+              </div>
+            {% endfor %}
+          </div>
+          
+          <!-- Carousel Controls (Dots) -->
+          <div class="carousel-dots">
+            {% for product in category_info.products %}
+              <button class="dot" data-slide="0"></button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Category Info -->
+        <div class="category-info">
+          <h3>{{ category }}</h3>
+          <p>{{ category_info.count }} Artworks</p>
+          <a href="{% url 'gallery' %}?region={{ category }}" class="view-button">
+            Explore Now →
+          </a>
+        </div>
+      </div>
+
+      {% endwith %}
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ===== CTA SECTION ===== -->
+<section class="cta-section">
+  <h2>View All Galleries</h2>
+  <a href="{% url 'gallery' %}" class="cta-button">Browse Complete Collection</a>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <p>&copy; Moorboor's Art Portfolio. All rights reserved.</p>
+  <div class="social-links">
+    <a href="https://www.instagram.com/moorboor/">Instagram</a>
+    <a href="https://www.moorboory@gmail.com">Email</a>
+  </div>
+</footer>
+
+<!-- JavaScript for Carousel -->
+<script src="{% static 'gallery/carousel.js' %}"></script>
+
+{% endblock %}

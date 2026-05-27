@@ -1,11 +1,10 @@
 from django.contrib import admin
-from django.utils.html import format_html  # ✅ imported
+from django.utils.html import format_html  
+from .models import Product, Person, ProductPerson, ProductMedia, ProductVisit, Comment
 
-from .models import Product, Person, ProductPerson, ProductMedia, ProductVisit
 
-
-class ProductMediaInline(admin.TabularInline):  # ✅ renamed to match what it is
-    model = ProductMedia                         # ✅ correct model
+class ProductMediaInline(admin.TabularInline):  
+    model = ProductMedia                        
     extra = 1
     fields = ["media_type", "image", "video", "caption", "order", "preview"]
     readonly_fields = ["preview"]
@@ -19,9 +18,9 @@ class ProductMediaInline(admin.TabularInline):  # ✅ renamed to match what it i
     preview.short_description = "Preview"
 
 
-@admin.register(Product)                        # ✅ replaces plain admin.site.register(Product)
+@admin.register(Product)                       
 class ProductAdmin(admin.ModelAdmin):
-    inlines = [ProductMediaInline]              # ✅ carousel media lives inside the product page
+    inlines = [ProductMediaInline]              
 
 
 @admin.register(Person)
@@ -56,3 +55,19 @@ class ProductVisitAdmin(admin.ModelAdmin):
     list_display = ('product', 'session_key', 'visited_at')
     list_filter = ('product', 'visited_at')
     readonly_fields = ('session_key', 'visited_at', 'product')
+    
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'product', 'created_at', 'is_approved')
+    list_filter = ('is_approved', 'created_at')
+    search_fields = ('name', 'content', 'product__title')
+    actions = ['approve_comments', 'reject_comments']
+    
+    def approve_comments(self, request, queryset):
+        queryset.update(is_approved=True)
+    approve_comments.short_description = "Approve selected comments"
+    
+    def reject_comments(self, request, queryset):
+        queryset.update(is_approved=False)
+    reject_comments.short_description = "Reject selected comments"

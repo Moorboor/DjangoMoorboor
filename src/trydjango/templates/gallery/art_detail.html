@@ -1,421 +1,287 @@
 {% extends "base.html" %}
 {% load static %}
+
 {% block content %}
 
 <link rel="stylesheet" type="text/css" href="{% static 'gallery/artworkDetail/style.css' %}">
 {{ product.geocoor|json_script:"coords-json" }}
 
-{# ── Product-to-product navigation ─────────────────────────── #}
-<div class="product-nav-header">
+<!-- ===== HEADER WITH NAVIGATION ===== -->
+<header class="artwork-header">
+  <div class="header-nav">
+    {% if prev_product %}
+      <a href="{% url 'artworkDetail' prev_product.pk %}"
+         class="nav-link prev"
+         title="Previous: {{ prev_product.title }}">
+        ← Previous
+      </a>
+    {% else %}
+      <span class="nav-link prev disabled">← Previous</span>
+    {% endif %}
 
-  {% if prev_product %}
-    <a href="{% url 'artworkDetail' prev_product.pk %}"
-       id="prevProductBtn"
-       class="product-nav-btn"
-       aria-label="Previous: {{ prev_product.title }}">&#8249;</a>
-  {% else %}
-    <span class="product-nav-btn is-disabled" aria-hidden="true">&#8249;</span>
-  {% endif %}
+    <a href="{% url 'gallery' %}" class="back-home">
+      Gallery
+    </a>
 
-  <h1 class="product-nav-title">{{ product.title }}</h1>
+    {% if next_product %}
+      <a href="{% url 'artworkDetail' next_product.pk %}"
+         class="nav-link next"
+         title="Next: {{ next_product.title }}">
+        Next →
+      </a>
+    {% else %}
+      <span class="nav-link next disabled">Next →</span>
+    {% endif %}
+  </div>
+</header>
 
-  {% if next_product %}
-    <a href="{% url 'artworkDetail' next_product.pk %}"
-       id="nextProductBtn"
-       class="product-nav-btn"
-       aria-label="Next: {{ next_product.title }}">&#8250;</a>
-  {% else %}
-    <span class="product-nav-btn is-disabled" aria-hidden="true">&#8250;</span>
-  {% endif %}
-
-</div>
-
-<div class="image-wrapper">
+<!-- ===== MAIN ARTWORK IMAGE ===== -->
+<section class="artwork-hero">
+  <div class="image-container">
     <img src="{{ product.image_file.url }}"
          alt="{{ product.title }}"
-         class="image-wrapper"
+         class="artwork-image"
          data-lightbox="{{ product.image_file.url }}"
          data-caption=""
          data-main-image
-         style="cursor:zoom-in;">
-    <p><strong>Date:</strong> {{ product.date }} <br> 👁 </strong> {{ product.visit_count }}</p>
-    <p>{{ product.description|linebreaks }}</p>
-    <p><a href="{% url 'gallery' %}">← Back to gallery</a></p>
-</div>
+         style="cursor: zoom-in;">
+  </div>
+</section>
 
-{# ── Carousel ───────────────────────────────────────────────── #}
+<!-- ===== ARTICLE CONTENT ===== -->
+<article class="artwork-article">
+  <div class="article-header">
+    <h1>{{ product.title }}</h1>
+    
+    <div class="article-meta">
+      <span class="meta-item">
+        <span class="meta-label">Year</span>
+        <span class="meta-value">{{ product.date|date:"Y" }}</span>
+      </span>
+      
+      <span class="meta-item">
+        <span class="meta-label">Location</span>
+        <span class="meta-value">{{ product.region }}</span>
+      </span>
+
+      <span class="meta-item">
+        <span class="meta-label">Medium</span>
+        <span class="meta-value">{{ product.method }}</span>
+      </span>
+
+      <span class="meta-item">
+        <span class="meta-label">Category</span>
+        <span class="meta-value">{{ product.category }}</span>
+      </span>
+
+      <span class="meta-item">
+        <span class="meta-label">Views</span>
+        <span class="meta-value">👁 {{ product.visit_count }}</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Article Body -->
+  {% if product.description %}
+    <div class="article-body">
+      {{ product.description|linebreaks }}
+    </div>
+  {% endif %}
+</article>
+
+<!-- ===== GALLERY/CAROUSEL ===== -->
 {% with imgs=product.carousel_images.all %}
   {% if imgs %}
-    <div class="carousel" id="productCarousel">
+    <section class="gallery-section">
+      <h2>Process & Details</h2>
+      
+      <div class="carousel" id="productCarousel">
 
-      {% if imgs|length > 4 %}
-        <button class="carousel-btn prev" type="button" aria-label="Previous">&#8249;</button>
-      {% endif %}
+        {% if imgs|length > 4 %}
+          <button class="carousel-btn prev" type="button" aria-label="Previous">‹</button>
+        {% endif %}
 
-      <div class="carousel-viewport">
-        <div class="carousel-track">
+        <div class="carousel-viewport">
+          <div class="carousel-track">
 
-          {% for item in imgs %}
-            <div class="carousel-slide">
+            {% for item in imgs %}
+              <div class="carousel-slide">
 
-              {% if item.media_type == "image" %}
-                <img src="{{ item.image.url }}"
-                     alt="{{ item.caption|default:product.title }}"
-                     data-lightbox="{{ item.image.url }}"
-                     data-caption="{{ item.caption }}"
-                     style="cursor:zoom-in;">
+                {% if item.media_type == "image" %}
+                  <img src="{{ item.image.url }}"
+                       alt="{{ item.caption|default:product.title }}"
+                       data-lightbox="{{ item.image.url }}"
+                       data-caption="{{ item.caption }}"
+                       style="cursor: zoom-in;">
 
-              {% elif item.media_type == "video" %}
-                <div style="position:relative;">
-                  <video controls preload="metadata"
-                         style="max-width:100%;max-height:100%;display:block;">
-                    <source src="{{ item.video.url }}" type="video/mp4">
-                    Your browser does not support video.
-                  </video>
-                  {# ✅ expand button opens video in lightbox #}
-                  <button class="video-lightbox-btn"
-                          data-lightbox-video="{{ item.video.url }}"
-                          data-caption="{{ item.caption }}"
-                          aria-label="Open fullscreen">⛶</button>
-                </div>
-              {% endif %}
+                {% elif item.media_type == "video" %}
+                  <div class="video-wrapper">
+                    <video preload="metadata">
+                      <source src="{{ item.video.url }}" type="video/mp4">
+                    </video>
+                    <button class="video-expand-btn"
+                            data-lightbox-video="{{ item.video.url }}"
+                            data-caption="{{ item.caption }}"
+                            aria-label="Open fullscreen">
+                      ⛶
+                    </button>
+                  </div>
+                {% endif %}
 
-              {% if item.caption %}
-                <div class="carousel-caption">{{ item.caption }}</div>
-              {% endif %}
+                {% if item.caption %}
+                  <p class="carousel-caption">{{ item.caption }}</p>
+                {% endif %}
 
-            </div>
-          {% endfor %}
+              </div>
+            {% endfor %}
 
+          </div>
         </div>
+
+        {% if imgs|length > 4 %}
+          <button class="carousel-btn next" type="button" aria-label="Next">›</button>
+        {% endif %}
+
       </div>
-
-      {% if imgs|length > 4 %}
-        <button class="carousel-btn next" type="button" aria-label="Next">&#8250;</button>
-      {% endif %}
-
-    </div>
+    </section>
   {% endif %}
 {% endwith %}
 
-{# ── Lightbox ───────────────────────────────────────────────── #}
-<div id="lightbox" aria-modal="true" role="dialog" aria-label="Fullscreen media">
-  <button id="lightbox-close" aria-label="Close">&#215;</button>
-  <button id="lightbox-prev"  aria-label="Previous">&#8249;</button>
+<!-- ===== LIGHTBOX ===== -->
+<div id="lightbox" aria-modal="true" role="dialog">
+  <button id="lightbox-close" aria-label="Close">✕</button>
+  <button id="lightbox-prev" aria-label="Previous">‹</button>
 
-  {# ✅ both elements present — one shown at a time #}
   <img id="lightbox-img" src="" alt="">
-  <video id="lightbox-video" controls style="display:none;max-width:90vw;max-height:90vh;">
+  <video id="lightbox-video" controls style="display: none;">
     <source id="lightbox-video-src" src="" type="video/mp4">
   </video>
 
   <p id="lightbox-caption"></p>
-  <button id="lightbox-next"  aria-label="Next">&#8250;</button>
+  <button id="lightbox-next" aria-label="Next">›</button>
 </div>
 
-{% comment %} <form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Upload</button>
-</form> {% endcomment %}
+<!-- ===== MAP ===== -->
+<section class="map-section">
+  <h2>Location Map</h2>
+  <div id="map"></div>
+</section>
 
-<div id="map"></div>
+<!-- ===== COMMENTS SECTION ===== -->
+<section class="comments-section">
+  <div class="comments-container">
+    
+    <h2>Comments & Thoughts</h2>
 
+    <!-- Comment Form -->
+    <div class="comment-form-box">
+      <h3>Share Your Thoughts</h3>
+      
+      <form method="post" action="{% url 'add_comment' product.pk %}" class="comment-form">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <input 
+            type="text" 
+            name="name" 
+            placeholder="Your name" 
+            required 
+            maxlength="100"
+            class="form-input"
+          >
+        </div>
+
+        <div class="form-group">
+          <input 
+            type="email" 
+            name="email" 
+            placeholder="Your email" 
+            required 
+            class="form-input"
+          >
+        </div>
+
+        <div class="form-group">
+          <textarea 
+            name="content" 
+            placeholder="What are your thoughts?"
+            rows="5"
+            required
+            maxlength="1000"
+            class="form-textarea"
+          ></textarea>
+          <small class="char-count">
+            <span id="char-count">0</span>/1000
+          </small>
+        </div>
+
+        <button type="submit" class="submit-btn">Post Comment</button>
+      </form>
+
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Comments List -->
+    <div class="comments-list">
+      {% if comments %}
+        <h3>{{ comments|length }} Comment{{ comments|pluralize }}</h3>
+        
+        {% for comment in comments %}
+          <div class="comment-item">
+            <div class="comment-header">
+              <strong>{{ comment.name }}</strong>
+              <span class="comment-date">{{ comment.created_at|date:"M d, Y \a\t H:i" }}</span>
+            </div>
+            <p class="comment-text">{{ comment.content|linebreaks }}</p>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="no-comments">No comments yet. Be the first to share your thoughts!</p>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <p>&copy; Moorboor's Art Portfolio. All rights reserved.</p>
+  <div class="social-links">
+    <a href="https://www.instagram.com/">Instagram</a>
+    <a href="https://www.moorboory@gmail.com">Email</a>
+  </div>
+</footer>
+
+<!-- Libraries -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-{# ── Carousel script ────────────────────────────────────────── #}
+<!-- Scripts -->
+<script src="{% static 'gallery/artworkDetail/carousel.js' %}"></script>
+<script src="{% static 'gallery/artworkDetail/lightbox.js' %}"></script>
+<script src="{% static 'gallery/artworkDetail/page-nav.js' %}"></script>
+<script src="{% static 'gallery/artworkDetail/map.js' %}"></script>
+
+<!-- Comment Form Character Counter -->
 <script>
-(function () {
-  const root = document.getElementById("productCarousel");
-  if (!root) return;
-
-  const track    = root.querySelector(".carousel-track");
-  const viewport = root.querySelector(".carousel-viewport");
-  const slides   = Array.from(root.querySelectorAll(".carousel-slide"));
-  const prevBtn  = root.querySelector(".prev");
-  const nextBtn  = root.querySelector(".next");
-
-  let index = 0;
-
-  function slidesPerView() {
-    return window.matchMedia("(max-width: 700px)").matches ? 1 : 4;
-  }
-  function maxIndex()   { return Math.max(0, slides.length - slidesPerView()); }
-  function slideWidth() { return slides[0].getBoundingClientRect().width; }
-
-  function goTo(n) {
-    index = Math.max(0, Math.min(maxIndex(), n));
-    track.style.transform = `translateX(-${index * slideWidth()}px)`;
-    if (prevBtn) prevBtn.disabled = index <= 0;
-    if (nextBtn) nextBtn.disabled = index >= maxIndex();
-  }
-
-  if (prevBtn) prevBtn.addEventListener("click", () => goTo(index - 1));
-  if (nextBtn) nextBtn.addEventListener("click", () => goTo(index + 1));
-
-  let cTouchX = 0, cTouchY = 0, cDragging = false;
-  const CSWIPE = 50;
-
-  viewport.addEventListener("touchstart", (e) => {
-    cTouchX = e.changedTouches[0].clientX;
-    cTouchY = e.changedTouches[0].clientY;
-    cDragging = true;
-  }, { passive: true });
-
-  viewport.addEventListener("touchmove", (e) => {
-    if (!cDragging) return;
-    if (Math.abs(e.changedTouches[0].clientY - cTouchY) >
-        Math.abs(e.changedTouches[0].clientX - cTouchX)) cDragging = false;
-  }, { passive: true });
-
-  viewport.addEventListener("touchend", (e) => {
-    if (!cDragging) return;
-    cDragging = false;
-    const diff = cTouchX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);
-  }, { passive: true });
-
-  let mStartX = 0, mDown = false;
-  viewport.addEventListener("mousedown", (e) => { mStartX = e.clientX; mDown = true; e.preventDefault(); });
-  window.addEventListener("mouseup", (e) => {
-    if (!mDown) return; mDown = false;
-    const diff = mStartX - e.clientX;
-    if (Math.abs(diff) >= CSWIPE) goTo(diff > 0 ? index + 1 : index - 1);
-  });
-
-  window.addEventListener("resize", () => goTo(index));
-  goTo(0);
-})();
-</script>
-
-{# ── Page swipe script ──────────────────────────────────────── #}
-<script>
-(function () {
-  const prevUrl = document.getElementById("prevProductBtn")?.href ?? null;
-  const nextUrl = document.getElementById("nextProductBtn")?.href ?? null;
-
-  function navigate(url) { if (!url) return; window.location.href = url; }
-
-  let startX = 0, startY = 0, dragX = 0;
-  let active = false, axis = null, fromCarousel = false;
-  const THRESHOLD = 0.35;
-
-  function applyDrag(dx) {
-    document.body.style.transition = "none";
-    document.body.style.transform  = `translateX(${dx}px)`;
-    window.dispatchEvent(new CustomEvent("navdrag", { detail: { dx } }));
-  }
-
-  function snapBack() {
-    document.body.style.transition = "transform 0.3s ease";
-    document.body.style.transform  = "translateX(0)";
-    window.dispatchEvent(new CustomEvent("navsnap"));
-    document.body.addEventListener("transitionend",
-      () => { document.body.style.transform = ""; document.body.style.transition = ""; },
-      { once: true });
-  }
-
-  function commitNav(direction) {
-    const vw = window.innerWidth;
-    document.body.style.transition = "transform 0.3s ease";
-    document.body.style.transform  = `translateX(${direction === "prev" ? vw : -vw}px)`;
-    window.dispatchEvent(new CustomEvent("navsnap"));
-    document.body.addEventListener("transitionend",
-      () => navigate(direction === "prev" ? prevUrl : nextUrl),
-      { once: true });
-  }
-
-  document.addEventListener("touchstart", e => {
-    fromCarousel = !!e.target.closest("#productCarousel");
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    dragX  = 0; active = true; axis = null;
-  }, { passive: true });
-
-  document.addEventListener("touchmove", e => {
-    if (!active || fromCarousel) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    if (!axis) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
-      if (axis === "y") { active = false; return; }
-    }
-    let d = dx;
-    if (d > 0 && !prevUrl) d = 0;
-    if (d < 0 && !nextUrl) d = 0;
-    dragX = d;
-    applyDrag(d);
-  }, { passive: true });
-
-  document.addEventListener("touchend", () => {
-    if (!active || axis !== "x") { active = false; return; }
-    active = false;
-    const ratio = Math.abs(dragX) / window.innerWidth;
-    if      (dragX > 0 && ratio >= THRESHOLD) commitNav("prev");
-    else if (dragX < 0 && ratio >= THRESHOLD) commitNav("next");
-    else    snapBack();
-    dragX = 0;
-  }, { passive: true });
-})();
-</script>
-
-{# ── Lightbox script ────────────────────────────────────────── #}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const lightbox     = document.getElementById("lightbox");
-  const lbImg        = document.getElementById("lightbox-img");
-  const lbVideo      = document.getElementById("lightbox-video");      // ✅ new
-  const lbVideoSrc   = document.getElementById("lightbox-video-src");  // ✅ new
-  const lbClose      = document.getElementById("lightbox-close");
-  const lbPrev       = document.getElementById("lightbox-prev");
-  const lbNext       = document.getElementById("lightbox-next");
-  const lbCaption    = document.getElementById("lightbox-caption");
-
-  let images       = [];
-  let currentIndex = 0;
-
-  // ── buildImageList — collect slides in DOM order (images + videos) ──
-  function buildImageList() {
-    images = [];
-
-    // Main image is always index 0
-    const mainImg = document.querySelector("[data-main-image]");
-    if (mainImg) {
-      images.push({ type: "image", src: mainImg.dataset.lightbox, alt: mainImg.alt, caption: "" });
-    }
-
-    // ✅ Walk slides in order — picks up both images and videos
-    document.querySelectorAll("#productCarousel .carousel-slide").forEach(slide => {
-      const img    = slide.querySelector("[data-lightbox]");
-      const vidBtn = slide.querySelector("[data-lightbox-video]");
-
-      if (img) {
-        images.push({
-          type:    "image",
-          src:     img.dataset.lightbox,
-          alt:     img.alt,
-          caption: img.dataset.caption || "",
-        });
-      } else if (vidBtn) {
-        images.push({
-          type:    "video",
-          src:     vidBtn.dataset.lightboxVideo,
-          caption: vidBtn.dataset.caption || "",
-        });
-      }
+document.addEventListener('DOMContentLoaded', function() {
+  const textarea = document.querySelector('.form-textarea');
+  const charCount = document.getElementById('char-count');
+  
+  if (textarea) {
+    textarea.addEventListener('input', function() {
+      charCount.textContent = this.value.length;
     });
   }
-
-  // ── openAt — show image OR video ────────────────────────────
-  function openAt(index) {
-    currentIndex  = Math.max(0, Math.min(images.length - 1, index));
-    const item    = images[currentIndex];
-
-    if (item.type === "video") {
-      // ✅ Show video, hide image
-      lbImg.style.display      = "none";
-      lbVideo.style.display    = "block";
-      lbVideoSrc.src           = item.src;
-      lbVideo.load();           // load the new source
-    } else {
-      // ✅ Show image, hide video
-      lbVideo.pause();
-      lbVideo.style.display    = "none";
-      lbImg.style.display      = "block";
-      lbImg.src                = item.src;
-      lbImg.alt                = item.alt || "";
-    }
-
-    lbCaption.textContent = item.caption;
-    lightbox.classList.add("open");
-    document.body.style.overflow = "hidden";
-    updateArrows();
-  }
-
-  // ── close — pause + clear both ──────────────────────────────
-  function close() {
-    lightbox.classList.remove("open");
-    lbImg.src             = "";
-    lbVideo.pause();
-    lbVideoSrc.src        = "";
-    lbVideo.load();        // reset player
-    lbCaption.textContent = "";
-    document.body.style.overflow = "";
-  }
-
-  function updateArrows() {
-    lbPrev.disabled = currentIndex <= 0;
-    lbNext.disabled = currentIndex >= images.length - 1;
-  }
-
-  // ── Click main image ─────────────────────────────────────────
-  document.querySelector("[data-main-image]")
-    ?.addEventListener("click", () => { buildImageList(); openAt(0); });
-
-  // ── Click carousel image or video expand button ──────────────
-  document.getElementById("productCarousel")
-    ?.addEventListener("click", e => {
-      const img    = e.target.closest("[data-lightbox]");
-      const vidBtn = e.target.closest("[data-lightbox-video]");
-      if (!img && !vidBtn) return;
-
-      buildImageList();
-
-      // Find which slide was clicked → maps to images index (+1 for main image)
-      const allSlides    = Array.from(document.querySelectorAll("#productCarousel .carousel-slide"));
-      const clickedSlide = (img || vidBtn).closest(".carousel-slide");
-      const slideIndex   = allSlides.indexOf(clickedSlide);
-      openAt(slideIndex + 1);  // +1 because main image is index 0
-    });
-
-  lbPrev.addEventListener("click", e => { e.stopPropagation(); openAt(currentIndex - 1); });
-  lbNext.addEventListener("click", e => { e.stopPropagation(); openAt(currentIndex + 1); });
-
-  lightbox.addEventListener("click", e => { if (e.target === lightbox) close(); });
-  lbClose.addEventListener("click", close);
-
-  document.addEventListener("keydown", e => {
-    if (!lightbox.classList.contains("open")) return;
-    if (e.key === "Escape")     close();
-    if (e.key === "ArrowLeft")  openAt(currentIndex - 1);
-    if (e.key === "ArrowRight") openAt(currentIndex + 1);
-  });
 });
 </script>
 
-{# ── Map script ─────────────────────────────────────────────── #}
-<script type="module">
-(async () => {
-  const products = await fetch('/api/artworks/').then(r => r.json());
-  const coords   = JSON.parse(document.getElementById('coords-json').textContent);
-  const [lat, lng] = coords.split(",");
-
-  const map = L.map('map');
-
-  L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
-  ).addTo(map);
-
-  L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-    { attribution: 'Labels &copy; Esri', maxZoom: 19 }
-  ).addTo(map);
-
-  for (const p of products) {
-    const [pLat, pLng] = p.geocoor.split(",");
-    const popup = `
-      <div style="background:black;color:white;padding:10px;">
-        <h3><a href="${p.url}" style="color:white;">${p.title}</a></h3>
-        <img src="${p.image_url}" alt="${p.title}" style="width:150px;">
-      </div>`;
-    L.marker([pLat, pLng]).addTo(map).bindPopup(popup);
-  }
-
-  map.setView([lat, lng], 14);
-})();
-</script>
-
-{% endblock content %}
+{% endblock %}
