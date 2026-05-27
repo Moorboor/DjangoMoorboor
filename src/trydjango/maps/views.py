@@ -189,7 +189,7 @@ def home_view(request, *args, **kwargs):
     print(args, kwargs)
     print(request.user)
     regions = {
-        'Svalbard': Product.objects.filter(region='Svalbard').order_by('visit_count')[:8],
+        'Svalbard': Product.objects.filter(region='Svalbard').order_by('-visit_count')[:8],
         'Central America': Product.objects.filter(region='Central America').order_by('-date')[:8],
         'Uzbekistan': Product.objects.filter(region='Uzbekistan').order_by('-date')[:8],
     }
