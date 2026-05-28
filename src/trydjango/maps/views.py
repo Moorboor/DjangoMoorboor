@@ -50,7 +50,7 @@ def gallery_view(request):
     page_obj = paginator.get_page(page_number)
     
     # Get all available regions
-    all_regions = ['Svalbard', 'Central America', 'Uzbekistan']
+    all_regions = ['Svalbard', 'Central America', 'Uzbekistan', 'Europe']
     
     # Get all unique categories (from entire database)
     all_categories = Product.objects.values_list('category', flat=True).distinct().order_by('category')
@@ -77,14 +77,9 @@ def artwork_view(request, pk):
     product.visit_count += 1
     product.save(update_fields=['visit_count'])
     
-    # Get adjacent products for navigation
-    all_products = Product.objects.all().order_by('pk')
-    product_list = list(all_products)
-    
     try:
-        current_index = product_list.index(product)
-        prev_product = product_list[current_index - 1] if current_index > 0 else None
-        next_product = product_list[current_index + 1] if current_index < len(product_list) - 1 else None
+        prev_product = Product.objects.filter(date__lt=product.date).order_by('-date').first()
+        next_product = Product.objects.filter(date__gt=product.date).order_by('date').first()
     except ValueError:
         prev_product = None
         next_product = None
@@ -192,6 +187,7 @@ def home_view(request, *args, **kwargs):
         'Svalbard': Product.objects.filter(region='Svalbard').order_by('-visit_count')[:8],
         'Central America': Product.objects.filter(region='Central America').order_by('-date')[:8],
         'Uzbekistan': Product.objects.filter(region='Uzbekistan').order_by('-date')[:8],
+        'Europe': Product.objects.filter(region='Europe').order_by('-date')[:8],
     }
     
     # Get counts for each region
@@ -199,6 +195,7 @@ def home_view(request, *args, **kwargs):
         'Svalbard': Product.objects.filter(region='Svalbard').count(),
         'Central America': Product.objects.filter(region='Central America').count(),
         'Uzbekistan': Product.objects.filter(region='Uzbekistan').count(),
+        'Europe': Product.objects.filter(region='Europe').count(),
     }
     
     # Build category_data structure
@@ -210,7 +207,7 @@ def home_view(request, *args, **kwargs):
         }
     
     context = {
-        'categories': ['Svalbard', 'Central America', 'Uzbekistan'],  # Just the names
+        'categories': ['Svalbard', 'Central America', 'Uzbekistan', 'Europe'],  # Just the names
         'category_data': category_data,  # Dictionary with count + products
     }
     return render(request, 'home.html', context)

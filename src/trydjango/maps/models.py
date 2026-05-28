@@ -18,6 +18,7 @@ class Product(models.Model):
         ('Svalbard', 'Svalbard'),
         ('Central America', 'Central America'),
         ('Uzbekistan', 'Uzbekistan'),
+        ('Europe', 'Europe'),
     ]
     
     CATEGORY_CHOICES = [
