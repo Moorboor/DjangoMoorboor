@@ -14,8 +14,9 @@ class Plane {
     }
 
     async _CreatePlane(scene) {
-        const boxWidth = 1.2;
-        const boxHeight = 1.2;
+        const aspectRatio = this.data.aspect_ratio;
+        const boxWidth = parseFloat(aspectRatio[0])*2;
+        const boxHeight = parseFloat(aspectRatio[2])*2;
         const boxDepth = 0.1;
         const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
         const material = new THREE.MeshBasicMaterial({color: 0xffffff });
@@ -39,6 +40,7 @@ class SceneManager {
         this.productData = null;
         this.renderer = new THREE.WebGLRenderer({antialias: true, canvas: document.querySelector("#c"), alpha : true}); 
         this.renderer.setSize(window.innerWidth, window.innerHeight);   
+        this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setScissorTest(true);
         this._FetchProductData().then(async () => { // Wrap the callback in an async function
                 await this._CreateHTMLGrid();
@@ -62,7 +64,7 @@ class SceneManager {
         controls.noZoom = true;
         controls.noPan = true;
         scene.add(camera);
-        camera.position.set(0, 0, 2.2);
+        camera.position.set(0, 0, 3.1);
         // {
 		// 	const color = 0xFFFFFF;
 		// 	const intensity = 3;
@@ -149,16 +151,16 @@ class SceneManager {
     }
 
     _Animate = (time) => {
-        time *= 0.00012; 
+        time *= 0.00005; 
         this._RenderSceneInfo();
         
         for (const sceneInfo of this.sceneInfos) {
             const {scene, camera, controls, elem} = sceneInfo;
-            scene.traverse(object => {
-                if (object.isMesh) {
-                    object.rotation.y = time;
-                }
-            });
+            // scene.traverse(object => {
+            //     if (object.isMesh) {
+            //         object.rotation.y = time;
+            //     }
+            // });
             controls.handleResize();
             controls.update();  
         }

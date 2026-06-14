@@ -8,7 +8,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ["category", "title", "image_url", "description", "date", "geocoor", "url"]
+        fields = ["category", "title", "image_url", "description", "date", "geocoor", "url", "aspect_ratio"]
         
     def get_image_url(self, product):
         return product.image_file.url
