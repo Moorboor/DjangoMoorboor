@@ -1,7 +1,23 @@
-html, body {
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background-color: black;
+}
+
+body {
+  font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+  color: white;
+  background-color: #0a0a0a;
+}
+
+/* html, body {
     margin : 0;
     height : 100%;
-}
+} */
 #c {
   position: fixed;
   left: 0;
@@ -15,14 +31,14 @@ html, body {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
     gap: 16px;
 }
 .card {
-    border: 1px solid #ddd;
+    /* border: 1px solid #ddd; */
     border-radius: 8px;
     overflow: hidden;
-    background: #fff;
+    background: black;
 }
 .card .body {
     padding: 12px;

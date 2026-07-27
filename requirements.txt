@@ -3,3 +3,6 @@ python-decouple
 gunicorn
 waitress 
 whitenoise[brotli]
+django_extensions
+djangorestframework
+Pillow

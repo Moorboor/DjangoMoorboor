@@ -1,6 +1,7 @@
 from django.contrib import admin
-from django.utils.html import format_html  
-from .models import Product, Person, ProductPerson, ProductMedia, ProductVisit, Comment
+from django.utils.html import format_html
+
+from .models import Product, Person, ProductPerson, ProductMedia, ProductVisit, Comment, ScrollyStep
 
 
 class ProductMediaInline(admin.TabularInline):  
@@ -16,11 +17,18 @@ class ProductMediaInline(admin.TabularInline):
             return format_html('<video src="{}" style="height:60px;" controls></video>', obj.video.url)
         return "—"
     preview.short_description = "Preview"
+class ScrollyStepInline(admin.TabularInline):
+    model = ScrollyStep
+    extra = 1  # Shows 1 blank slot ready to add at the bottom
+    fields = ('order', 'scale', 'x', 'y', 'layout', 'title', 'description')
+    ordering = ('order',)
 
 
 @admin.register(Product)                       
 class ProductAdmin(admin.ModelAdmin):
-    inlines = [ProductMediaInline]              
+    list_display = ('title', 'region', 'date')
+    inlines = [ProductMediaInline, ScrollyStepInline] 
+
 
 
 @admin.register(Person)
@@ -71,3 +79,5 @@ class CommentAdmin(admin.ModelAdmin):
     def reject_comments(self, request, queryset):
         queryset.update(is_approved=False)
     reject_comments.short_description = "Reject selected comments"
+
+

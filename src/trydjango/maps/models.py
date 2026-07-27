@@ -100,6 +100,66 @@ class Product(models.Model):
         related_name='products',
         blank=True,
     )
+
+    @property
+    def scrolly_steps(self):
+        """
+        Builds the scrollytelling path where:
+        - Step 1 is locked to the Title + Metadata underneath it.
+        - Step 2 onwards is dynamically populated by customizable admin entries.
+        """
+        db_steps = list(self.scrolly_steps_rel.all())
+
+        # Grab first step's positioning rules if customized in admin, else use default framing
+        first_step_layout = "bottom-left"
+        first_scale, first_x, first_y = 1.0, 0, 0
+        if db_steps:
+            first_scale = db_steps[0].scale
+            first_x = db_steps[0].x
+            first_y = db_steps[0].y
+            first_layout = db_steps[0].layout
+
+        # LOCK STEP 1: Always Product Title + Metadata
+        steps = [{
+            "title": self.title,
+            "layout": first_step_layout,
+            "scale": first_scale,
+            "x": first_x,
+            "y": first_y,
+            "meta_items": [
+                {"label": "Location", "value": self.region},
+                {"label": "Year", "value": self.date.strftime('%d %B %Y') if self.date else ''},
+                {"label": "Medium", "value": self.method},
+                {"label": "Category", "value": self.category},
+            ]
+        }]
+
+        # STEP 2 ONWARDS: Custom configurations from database
+        if len(db_steps) > 1:
+            for db_step in db_steps[1:]:
+                step_data = {
+                    "layout": db_step.layout,
+                    "scale": db_step.scale,
+                    "x": db_step.x,
+                    "y": db_step.y,
+                }
+                if db_step.description:
+                    step_data["title"] = db_step.title or "Observations"
+                    step_data["description"] = db_step.description
+                else:
+                    step_data["title"] = db_step.title or "Details"
+                steps.append(step_data)
+        else:
+            # Fallback standard Step 2 path if no custom admin steps exist yet
+            if self.description:
+                steps.append({
+                    "title": "Observations",
+                    "description": self.description,
+                    "layout": "bottom-right",
+                    "scale": 1.8, "x": 12, "y": -8,
+                })
+
+        return steps
     
     def __str__(self):
         return f"{self.title} ({self.region})"
@@ -107,6 +167,62 @@ class Product(models.Model):
     class Meta:
         ordering = ['-date']
         verbose_name_plural = 'Products'
+
+# This model gets its own separate Meta configuration
+class ScrollyStep(models.Model):
+    LAYOUT_CHOICES = [
+        ('bottom-left', 'Bottom Left'),
+        ('top-right', 'Top Right'),
+        ('bottom-right', 'Bottom Right'),
+        ('top-left', 'Top Left'),
+    ]
+
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name='scrolly_steps_rel'
+    )
+    order = models.PositiveIntegerField(
+        default=0, 
+        help_text="Display order sequence (0, 1, 2...)"
+    )
+    scale = models.FloatField(
+        default=1.0, 
+        help_text="Zoom factor (e.g. 1.0 = normal, 2.5 = deep detail zoom)"
+    )
+    x = models.FloatField(
+        default=0.0, 
+        help_text="Horizontal panning percentage (e.g. -15 moves left, 15 moves right)"
+    )
+    y = models.FloatField(
+        default=0.0, 
+        help_text="Vertical panning percentage (e.g. -15 moves up, 15 moves down)"
+    )
+    layout = models.CharField(
+        max_length=20, 
+        choices=LAYOUT_CHOICES, 
+        default='bottom-left',
+        help_text="Where the text floats relative to the drawing negative space"
+    )
+    title = models.CharField(
+        max_length=200, 
+        blank=True, 
+        null=True, 
+        help_text="Optional text header override"
+    )
+    description = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Add text here to display a scrollable description card at this step"
+    )
+
+    class Meta:
+        ordering = ['order']  # Keeps the steps sorted cleanly inside each product page
+
+    def __str__(self):
+        return f"Step {self.order} for {self.product.title}"
+
+
 
 class ProductVisit(models.Model):
     """Track unique session visits to products"""

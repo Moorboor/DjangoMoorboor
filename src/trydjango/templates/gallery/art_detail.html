@@ -6,142 +6,319 @@
 <link rel="stylesheet" type="text/css" href="{% static 'gallery/artworkDetail/style.css' %}">
 {{ product.geocoor|json_script:"coords-json" }}
 
-<!-- ===== HEADER WITH NAVIGATION ===== -->
-<header class="artwork-header">
-  <div class="header-nav">
-    {% if prev_product %}
-      <a href="{% url 'artworkDetail' prev_product.pk %}"
-         class="nav-link prev"
-         title="Previous: {{ prev_product.title }}">
-        ← Previous
-      </a>
-    {% else %}
-      <span class="nav-link prev disabled">← Previous</span>
-    {% endif %}
+<!-- ===== MODEL-DRIVEN SCROLLYTELLING STYLES ===== -->
+<style>
+  .scrolly-container {
+    position: relative;
+    height: 300vh; 
+    background-color: #050505;
+  }
 
-    <a href="{% url 'gallery' %}" class="back-home">
-      Gallery
-    </a>
+  .scrolly-viewport {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100svh;
+    overflow: hidden;
+  }
 
-    {% if next_product %}
-      <a href="{% url 'artworkDetail' next_product.pk %}"
-         class="nav-link next"
-         title="Next: {{ next_product.title }}">
-        Next →
-      </a>
-    {% else %}
-      <span class="nav-link next disabled">Next →</span>
-    {% endif %}
-  </div>
-</header>
+  .scrolly-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    will-change: transform;
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-<!-- ===== MAIN ARTWORK IMAGE ===== -->
-<section class="artwork-hero">
-  <div class="image-container">
-    <img src="{{ product.image_file.url }}"
-         alt="{{ product.title }}"
-         class="artwork-image"
-         data-lightbox="{{ product.image_file.url }}"
-         data-caption=""
-         data-main-image
-         style="cursor: zoom-in;">
-  </div>
-</section>
+  .scrolly-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+  }
 
-<!-- ===== ARTICLE CONTENT ===== -->
-<article class="artwork-article">
-  <div class="article-header">
-    <h1>{{ product.title }}</h1>
+  .scrolly-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ── FLEXIBLE STEP BASE ── */
+  .text-step {
+    position: absolute;
+    width: 90%;
+    max-width: 500px; /* Slightly wider to support inline meta tags */
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(0, 15px, 0);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.8s;
+    pointer-events: auto;
+  }
+
+  .text-step.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* ── HIGH-CONTRAST TEXT SHADOWS ── */
+  .text-step h1, 
+  .text-step h2, 
+  .text-step h3,
+  .text-step p,
+  .text-step span,
+  .text-step div {
+    color: #ffffff !important;
+    text-shadow: 
+      0 1px 2px rgba(0, 0, 0, 1.0),   
+      0 2px 4px rgba(0, 0, 0, 0.9),   
+      0 4px 12px rgba(0, 0, 0, 0.8),  
+      0 0 20px rgba(0, 0, 0, 0.6);    
+  }
+
+  /* ── POSITION PLACEMENTS ── */
+  .text-step.bottom-left {
+    bottom: 8%;
+    left: 5%;
+    text-align: left;
+  }
+  .text-step.bottom-left h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .text-step.top-right {
+    top: 12%;
+    right: 5%;
+    text-align: right;
+  }
+
+  .text-step.bottom-right {
+    bottom: 8%;
+    right: 5%;
+    text-align: right;
+  }
+
+  .step1-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px; /* Reduced vertical gap to 4px and horizontal gap to 10px */
+    margin-top: 6px; /* Brought closer to the main heading title */
+    font-size: 0.8rem; /* Slightly smaller text looks cleaner on mobile devices */
+    font-weight: 300;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  
+  .step1-meta-item:not(:last-child)::after {
+    content: "•";
+    margin-left: 10px; /* Reduced gap spacing around the separating bullet points */
+    opacity: 0.5;
+  }
+
+  /* ── STEP 2+: SCROLLABLE OBS LOGS ── */
+  .minimal-description-card {
+    border-right: 2px solid #ffffff; 
+    padding-right: 20px;
+    max-height: 40vh;
+    overflow-y: auto;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+  }
+  .minimal-description-card h3 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin-bottom: 10px;
+    opacity: 0.85;
+  }
+  .minimal-description-text {
+    font-size: clamp(0.95rem, 3.2vw, 1.1rem);
+    line-height: 1.7;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .minimal-description-card::-webkit-scrollbar {
+    width: 2px;
+  }
+  .minimal-description-card::-webkit-scrollbar-thumb {
+    background: #ffffff;
+  }
+
+  /* ── SCROLL INDICATOR & HINTS ── */
+  .scroll-indicator {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .scroll-indicator.hide { opacity: 0; }
+  .scroll-indicator .arrow {
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid rgba(255,255,255,0.5);
+    border-bottom: 1.5px solid rgba(255,255,255,0.5);
+    transform: rotate(45deg);
+    margin: 6px auto 0;
+    animation: bounce-arrow 1.5s infinite;
+  }
+  @keyframes bounce-arrow {
+    0%, 100% { transform: translateY(0) rotate(45deg); }
+    50% { transform: translateY(5px) rotate(45deg); }
+  }
+
+  .zoom-hint {
+    position: absolute;
+    top: 80px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 6px 12px;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    z-index: 11;
+    pointer-events: none;
+  }
+
+  @media (max-width: 600px) {
+    .text-step.top-right {
+      top: auto;
+      bottom: 8%;
+      right: 5%;
+    }
+  }
+</style>
+
+<!-- ===== IMMERSIVE DYNAMIC SCROLLYTELLING HERO ===== -->
+<div class="scrolly-container">
+  <div class="scrolly-viewport">
     
-    <div class="article-meta">
-      <span class="meta-item">
-        <span class="meta-label">Year</span>
-        <span class="meta-value">{{ product.date|date:"Y" }}</span>
-      </span>
-      
-      <span class="meta-item">
-        <span class="meta-label">Location</span>
-        <span class="meta-value">{{ product.region }}</span>
-      </span>
+    <div class="zoom-hint">Tap to expand canvas</div>
 
-      <span class="meta-item">
-        <span class="meta-label">Medium</span>
-        <span class="meta-value">{{ product.method }}</span>
-      </span>
-
-      <span class="meta-item">
-        <span class="meta-label">Category</span>
-        <span class="meta-value">{{ product.category }}</span>
-      </span>
-
-      <span class="meta-item">
-        <span class="meta-label">Views</span>
-        <span class="meta-value">👁 {{ product.visit_count }}</span>
-      </span>
+    <div class="scrolly-bg" 
+         style="background-image: url('{{ product.image_file.url }}'); cursor: zoom-in;"
+         data-lightbox="{{ product.image_file.url }}"
+         data-caption="{{ product.title }} ({{ product.date|date:'Y' }})">
+      <div class="scrolly-overlay"></div>
     </div>
+
+    <!-- DYNAMICALLY RENDERED MODEL-DRIVEN STEPS -->
+    <div class="scrolly-content">
+      {% for step in product.scrolly_steps %}
+        <div class="text-step {{ step.layout }} {% if forloop.first %}active{% endif %}" 
+             id="step-{{ forloop.counter0 }}"
+             data-scale="{{ step.scale }}"
+             data-x="{{ step.x }}"
+             data-y="{{ step.y }}">
+
+          <!-- STEP 1 Layout: Frozen to Title + Metadata row -->
+          {% if forloop.first %}
+            <h1>{{ step.title }}</h1>
+            <div class="step1-meta-row">
+              {% for item in step.meta_items %}
+                {% if item.value %}
+                  <span class="step1-meta-item">{{ item.value }}</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+          <!-- STEP 2+ Layouts: Fully customizable via database fields -->
+          {% elif step.description %}
+            <div class="minimal-description-card">
+              <h3>{{ step.title }}</h3>
+              <div class="minimal-description-text">
+                {{ step.description|linebreaks }}
+              </div>
+            </div>
+          {% else %}
+            <div class="minimal-description-card">
+              <h3>Detail Inspection</h3>
+              <div class="minimal-description-text">
+                <p>{{ step.title }}</p>
+              </div>
+            </div>
+          {% endif %}
+
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Scroll helper -->
+    <div class="scroll-indicator">
+      <span>Scroll To View Details</span>
+      <div class="arrow"></div>
+    </div>
+
   </div>
-
-  <!-- Article Body -->
-  {% if product.description %}
-    <div class="article-body">
-      {{ product.description|linebreaks }}
-    </div>
-  {% endif %}
-</article>
+</div>
 
 <!-- ===== GALLERY/CAROUSEL ===== -->
 {% with imgs=product.carousel_images.all %}
   {% if imgs %}
     <section class="gallery-section">
-      <h2>Process & Details</h2>
-      
+      <!-- <h2>Process & Details</h2> -->
       <div class="carousel" id="productCarousel">
-
         {% if imgs|length > 4 %}
           <button class="carousel-btn prev" type="button" aria-label="Previous">‹</button>
         {% endif %}
-
         <div class="carousel-viewport">
           <div class="carousel-track">
-
             {% for item in imgs %}
               <div class="carousel-slide">
-
                 {% if item.media_type == "image" %}
-                  <img src="{{ item.image.url }}"
-                       alt="{{ item.caption|default:product.title }}"
-                       data-lightbox="{{ item.image.url }}"
-                       data-caption="{{ item.caption }}"
-                       style="cursor: zoom-in;">
-
+                  <img src="{{ item.image.url }}" alt="{{ item.caption|default:product.title }}" data-lightbox="{{ item.image.url }}" data-caption="{{ item.caption }}" style="cursor: zoom-in;">
                 {% elif item.media_type == "video" %}
                   <div class="video-wrapper">
                     <video preload="metadata">
                       <source src="{{ item.video.url }}" type="video/mp4">
                     </video>
-                    <button class="video-expand-btn"
-                            data-lightbox-video="{{ item.video.url }}"
-                            data-caption="{{ item.caption }}"
-                            aria-label="Open fullscreen">
-                      ⛶
-                    </button>
+                    <button class="video-expand-btn" data-lightbox-video="{{ item.video.url }}" data-caption="{{ item.caption }}" aria-label="Open fullscreen">⛶</button>
                   </div>
                 {% endif %}
-
                 {% if item.caption %}
                   <p class="carousel-caption">{{ item.caption }}</p>
                 {% endif %}
-
               </div>
             {% endfor %}
-
           </div>
         </div>
-
         {% if imgs|length > 4 %}
           <button class="carousel-btn next" type="button" aria-label="Next">›</button>
         {% endif %}
-
       </div>
     </section>
   {% endif %}
@@ -151,89 +328,52 @@
 <div id="lightbox" aria-modal="true" role="dialog">
   <button id="lightbox-close" aria-label="Close">✕</button>
   <button id="lightbox-prev" aria-label="Previous">‹</button>
-
   <img id="lightbox-img" src="" alt="">
   <video id="lightbox-video" controls style="display: none;">
     <source id="lightbox-video-src" src="" type="video/mp4">
   </video>
-
   <p id="lightbox-caption"></p>
   <button id="lightbox-next" aria-label="Next">›</button>
 </div>
 
 <!-- ===== MAP ===== -->
 <section class="map-section">
-  <h2>Location Map</h2>
+  <!-- <h2>Location Map</h2> -->
   <div id="map"></div>
 </section>
 
 <!-- ===== COMMENTS SECTION ===== -->
 <section class="comments-section">
   <div class="comments-container">
-    
-    <h2>Comments & Thoughts</h2>
-
-    <!-- Comment Form -->
+    <!-- <h2>Comments & Thoughts</h2> -->
     <div class="comment-form-box">
       <h3>Share Your Thoughts</h3>
-      
       <form method="post" action="{% url 'add_comment' product.pk %}" class="comment-form">
         {% csrf_token %}
-        
         <div class="form-group">
-          <input 
-            type="text" 
-            name="name" 
-            placeholder="Your name" 
-            required 
-            maxlength="100"
-            class="form-input"
-          >
+          <input type="text" name="name" placeholder="Your name" required maxlength="100" class="form-input">
         </div>
-
         <div class="form-group">
-          <input 
-            type="email" 
-            name="email" 
-            placeholder="Your email" 
-            required 
-            class="form-input"
-          >
+          <input type="email" name="email" placeholder="Your email" required class="form-input">
         </div>
-
         <div class="form-group">
-          <textarea 
-            name="content" 
-            placeholder="What are your thoughts?"
-            rows="5"
-            required
-            maxlength="1000"
-            class="form-textarea"
-          ></textarea>
-          <small class="char-count">
-            <span id="char-count">0</span>/1000
-          </small>
+          <textarea name="content" placeholder="What are your thoughts?" rows="5" required maxlength="1000" class="form-textarea"></textarea>
+          <small class="char-count"><span id="char-count">0</span>/1000</small>
         </div>
-
         <button type="submit" class="submit-btn">Post Comment</button>
       </form>
-
       {% if messages %}
         <div class="messages">
           {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-              {{ message }}
-            </div>
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
           {% endfor %}
         </div>
       {% endif %}
     </div>
 
-    <!-- Comments List -->
     <div class="comments-list">
       {% if comments %}
         <h3>{{ comments|length }} Comment{{ comments|pluralize }}</h3>
-        
         {% for comment in comments %}
           <div class="comment-item">
             <div class="comment-header">
@@ -247,7 +387,6 @@
         <p class="no-comments">No comments yet. Be the first to share your thoughts!</p>
       {% endif %}
     </div>
-
   </div>
 </section>
 
@@ -256,7 +395,7 @@
   <p>&copy; Moorboor's Art Portfolio. All rights reserved.</p>
   <div class="social-links">
     <a href="https://www.instagram.com/">Instagram</a>
-    <a href="https://www.moorboory@gmail.com">Email</a>
+    <a href="mailto:moorboory@gmail.com">Email</a>
   </div>
 </footer>
 
@@ -270,6 +409,82 @@
 <script src="{% static 'gallery/artworkDetail/page-nav.js' %}"></script>
 <script src="{% static 'gallery/artworkDetail/map.js' %}"></script>
 
+<!-- Dynamic Mathematical Scrollytelling Engine -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const container = document.querySelector(".scrolly-container");
+    const bgImage = document.querySelector(".scrolly-bg");
+    const indicator = document.querySelector(".scroll-indicator");
+    
+    // Select all dynamically generated steps
+    const steps = Array.from(document.querySelectorAll(".text-step"));
+    const numSteps = steps.length;
+
+    if (numSteps === 0) return;
+
+    // Map elements into coordinates arrays dynamically
+    const route = steps.map(step => ({
+      scale: parseFloat(step.dataset.scale) || 1.0,
+      x: parseFloat(step.dataset.x) || 0,
+      y: parseFloat(step.dataset.y) || 0
+    }));
+
+    function handleScroll() {
+      const rect = container.getBoundingClientRect();
+      const viewHeight = window.innerHeight;
+      
+      // Calculate global scroll progress (0.0 to 1.0)
+      const totalScrollable = rect.height - viewHeight;
+      const currentScroll = -rect.top;
+      let progress = currentScroll / totalScrollable;
+      progress = Math.max(0, Math.min(1, progress));
+
+      // ── ADVANCED N-STEP INTERPOLATION MATH ──
+      // Divides progress timeline cleanly regardless of step quantity
+      const segments = numSteps - 1;
+      const rawIndex = progress * segments;
+      const currentIndex = Math.floor(rawIndex);
+      const nextIndex = Math.min(currentIndex + 1, segments);
+      
+      // Local progression percentage (0.0 to 1.0) inside current segment
+      const t = rawIndex - currentIndex; 
+
+      // Linearly interpolate (lerp) values between current step and next step
+      const currentRoute = route[currentIndex];
+      const nextRoute = route[nextIndex];
+
+      const scale = currentRoute.scale + (nextRoute.scale - currentRoute.scale) * t;
+      const x = currentRoute.x + (nextRoute.x - currentRoute.x) * t;
+      const y = currentRoute.y + (nextRoute.y - currentRoute.y) * t;
+
+      // Transform image
+      bgImage.style.transform = `scale3d(${scale}, ${scale}, 1) translate3d(${x}%, ${y}%, 0)`;
+
+      // Determine which text block is active
+      const activeStepIndex = Math.min(Math.round(rawIndex), segments);
+      
+      steps.forEach((step, idx) => {
+        if (idx === activeStepIndex) {
+          step.classList.add("active");
+        } else {
+          step.classList.remove("active");
+        }
+      });
+
+      // Hide or show helper indicator
+      if (progress < 0.15) {
+        indicator.classList.remove("hide");
+      } else {
+        indicator.classList.add("hide");
+      }
+    }
+
+    // High performance scrolling metrics
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+  });
+</script>
+
 <!-- Comment Form Character Counter -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -282,6 +497,101 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+</script>
+
+<!-- Dynamic Mathematical Scrollytelling Engine with Mobile Zoom Amplifier -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const container = document.querySelector(".scrolly-container");
+    const bgImage = document.querySelector(".scrolly-bg");
+    const indicator = document.querySelector(".scroll-indicator");
+    
+    // Select all dynamically generated steps
+    const steps = Array.from(document.querySelectorAll(".text-step"));
+    const numSteps = steps.length;
+
+    if (numSteps === 0) return;
+
+    // ── MOBILE ZOOM AMPLIFIER CONFIGURATION ──
+    // Detects if screen is narrower than 768px (tablets/phones)
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    
+    // Change this value to adjust the depth of the zoom on phones.
+    // Examples: 
+    // 1.0 = No amplification (uses exact admin values)
+    // 1.4 = 40% deeper zoom on phones
+    // 1.8 = 80% deeper zoom on phones
+    const mobileZoomAmplifier = 2.0; 
+
+    // Map elements into coordinates arrays dynamically
+    const route = steps.map((step, idx) => {
+      let scale = parseFloat(step.dataset.scale) || 1.0;
+      
+      // If we are on mobile, amplify the zoom level for all steps after Step 1
+      if (isMobile && idx > 0 && scale > 1.0) {
+        scale = scale * mobileZoomAmplifier;
+      }
+
+      return {
+        scale: scale,
+        x: parseFloat(step.dataset.x) || 0,
+        y: parseFloat(step.dataset.y) || 0
+      };
+    });
+
+    function handleScroll() {
+      const rect = container.getBoundingClientRect();
+      const viewHeight = window.innerHeight;
+      
+      // Calculate global scroll progress (0.0 to 1.0)
+      const totalScrollable = rect.height - viewHeight;
+      const currentScroll = -rect.top;
+      let progress = currentScroll / totalScrollable;
+      progress = Math.max(0, Math.min(1, progress));
+
+      // ── ADVANCED N-STEP INTERPOLATION MATH ──
+      const segments = numSteps - 1;
+      const rawIndex = progress * segments;
+      const currentIndex = Math.floor(rawIndex);
+      const nextIndex = Math.min(currentIndex + 1, segments);
+      
+      // Local progression percentage (0.0 to 1.0) inside current segment
+      const t = rawIndex - currentIndex; 
+
+      // Linearly interpolate (lerp) values between current step and next step
+      const currentRoute = route[currentIndex];
+      const nextRoute = route[nextIndex];
+
+      const scale = currentRoute.scale + (nextRoute.scale - currentRoute.scale) * t;
+      const x = currentRoute.x + (nextRoute.x - currentRoute.x) * t;
+      const y = currentRoute.y + (nextRoute.y - currentRoute.y) * t;
+
+      // Transform image
+      bgImage.style.transform = `scale3d(${scale}, ${scale}, 1) translate3d(${x}%, ${y}%, 0)`;
+
+      // Determine which text block is active
+      const activeStepIndex = Math.min(Math.round(rawIndex), segments);
+      
+      steps.forEach((step, idx) => {
+        if (idx === activeStepIndex) {
+          step.classList.add("active");
+        } else {
+          step.classList.remove("active");
+        }
+      });
+
+      // Hide or show helper indicator
+      if (progress < 0.15) {
+        indicator.classList.remove("hide");
+      } else {
+        indicator.classList.add("hide");
+      }
+    }
+
+    // High performance scrolling metrics
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+  });
 </script>
 
 {% endblock %}
