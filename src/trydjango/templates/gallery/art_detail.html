@@ -8,6 +8,11 @@
 
 <!-- ===== MODEL-DRIVEN SCROLLYTELLING STYLES ===== -->
 <style>
+  /* Force native, immediate touch-scroll response (Prevents smooth-scroll lag fight) */
+  html, body {
+    scroll-behavior: auto !important;
+  }
+
   .scrolly-container {
     position: relative;
     height: 300vh; 
@@ -24,18 +29,31 @@
     overflow: hidden;
   }
 
+  /* ── HARDWARE-PROMOTED NATIVE IMAGE CANVAS ── */
   .scrolly-bg {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #050505;
+  }
+
+  .scrolly-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
     will-change: transform;
     transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    
+    /* Promotes image layer directly to mobile 3D GPU graphics pipeline */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
   }
 
   .scrolly-overlay {
@@ -46,6 +64,7 @@
     height: 100%;
     background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.5) 100%);
     pointer-events: none;
+    z-index: 2;
   }
 
   .scrolly-content {
@@ -62,7 +81,7 @@
   .text-step {
     position: absolute;
     width: 90%;
-    max-width: 500px; /* Slightly wider to support inline meta tags */
+    max-width: 500px;
     opacity: 0;
     visibility: hidden;
     transform: translate3d(0, 15px, 0);
@@ -100,7 +119,7 @@
     text-align: left;
   }
   .text-step.bottom-left h1 {
-    font-family: "Cormorant Garamond", Georgia, serif;
+    font-family: "Helvetica Neue", Arial, sans-serif;
     font-size: clamp(2.2rem, 6vw, 3.2rem);
     font-weight: 300;
     letter-spacing: 1px;
@@ -119,20 +138,20 @@
     text-align: right;
   }
 
+  /* ── STEP 1: INLINE METADATA ROW ── */
   .step1-meta-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 10px; /* Reduced vertical gap to 4px and horizontal gap to 10px */
-    margin-top: 6px; /* Brought closer to the main heading title */
-    font-size: 0.8rem; /* Slightly smaller text looks cleaner on mobile devices */
+    gap: 4px 10px;
+    margin-top: 6px;
+    font-size: 0.8rem;
     font-weight: 300;
     letter-spacing: 1px;
     text-transform: uppercase;
   }
-  
   .step1-meta-item:not(:last-child)::after {
     content: "•";
-    margin-left: 10px; /* Reduced gap spacing around the separating bullet points */
+    margin-left: 10px;
     opacity: 0.5;
   }
 
@@ -499,35 +518,52 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Dynamic Mathematical Scrollytelling Engine with Mobile Zoom Amplifier -->
+<!-- High-Performance Layout-Independent Scrollytelling Engine -->
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const container = document.querySelector(".scrolly-container");
-    const bgImage = document.querySelector(".scrolly-bg");
+    const viewport = document.querySelector(".scrolly-viewport");
+    const bgImage = document.querySelector(".scrolly-img");
     const indicator = document.querySelector(".scroll-indicator");
     
-    // Select all dynamically generated steps
     const steps = Array.from(document.querySelectorAll(".text-step"));
     const numSteps = steps.length;
 
-    if (numSteps === 0) return;
+    if (numSteps === 0 || !bgImage) return;
 
-    // ── MOBILE ZOOM AMPLIFIER CONFIGURATION ──
-    // Detects if screen is narrower than 768px (tablets/phones)
+    // Detect if screen is narrower than 768px (tablets/phones)
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    
-    // Change this value to adjust the depth of the zoom on phones.
-    // Examples: 
-    // 1.0 = No amplification (uses exact admin values)
-    // 1.4 = 40% deeper zoom on phones
-    // 1.8 = 80% deeper zoom on phones
-    const mobileZoomAmplifier = 2.0; 
+    const mobileZoomAmplifier = 1.4; // Zoom scale boost on touchscreens
 
-    // Map elements into coordinates arrays dynamically
+    // ── STABLE DOCUMENT LAYOUT COORDINATES ──
+    let containerOffsetTop = 0;
+    let totalScrollableRange = 0;
+
+    function calculateLayoutMetrics() {
+      // Pin viewport height securely to absolute physical pixels
+      viewport.style.height = `${window.innerHeight}px`;
+
+      // Find the absolute document offset independent of live viewport status
+      const rect = container.getBoundingClientRect();
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      
+      containerOffsetTop = rect.top + scrollTop;
+      totalScrollableRange = rect.height - window.innerHeight;
+    }
+
+    // Measure layout boundaries once upfront
+    calculateLayoutMetrics();
+
+    // Re-measure ONLY when window geometry changes (e.g., orientation swap)
+    window.addEventListener("resize", calculateLayoutMetrics);
+    window.addEventListener("orientationchange", () => {
+      setTimeout(calculateLayoutMetrics, 200);
+    });
+
+    // Parse coordinates array
     const route = steps.map((step, idx) => {
       let scale = parseFloat(step.dataset.scale) || 1.0;
       
-      // If we are on mobile, amplify the zoom level for all steps after Step 1
       if (isMobile && idx > 0 && scale > 1.0) {
         scale = scale * mobileZoomAmplifier;
       }
@@ -539,26 +575,37 @@ document.addEventListener('DOMContentLoaded', function() {
       };
     });
 
-    function handleScroll() {
-      const rect = container.getBoundingClientRect();
-      const viewHeight = window.innerHeight;
-      
-      // Calculate global scroll progress (0.0 to 1.0)
-      const totalScrollable = rect.height - viewHeight;
-      const currentScroll = -rect.top;
-      let progress = currentScroll / totalScrollable;
-      progress = Math.max(0, Math.min(1, progress));
+    // ── INTERPOLATION (LERPING) VARIABLES ──
+    let targetProgress = 0;      
+    let currentProgress = 0;     
+    const easeFactor = 0.08; // Smooth gliding factor
 
-      // ── ADVANCED N-STEP INTERPOLATION MATH ──
+    // Track scroll directly off OS scroll metrics (No bounding rect recalculations)
+    function onScroll() {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const relativeOffset = scrollTop - containerOffsetTop;
+      
+      let progress = relativeOffset / totalScrollableRange;
+      targetProgress = Math.max(0, Math.min(1, progress));
+    }
+
+    // ── GPU RENDERING COMPOSITOR TICK ──
+    function renderLoop() {
+      // Interpolate progress smoothly
+      currentProgress += (targetProgress - currentProgress) * easeFactor;
+
+      // Close loops when near target
+      if (Math.abs(targetProgress - currentProgress) < 0.0001) {
+        currentProgress = targetProgress;
+      }
+
       const segments = numSteps - 1;
-      const rawIndex = progress * segments;
+      const rawIndex = currentProgress * segments;
       const currentIndex = Math.floor(rawIndex);
       const nextIndex = Math.min(currentIndex + 1, segments);
       
-      // Local progression percentage (0.0 to 1.0) inside current segment
       const t = rawIndex - currentIndex; 
 
-      // Linearly interpolate (lerp) values between current step and next step
       const currentRoute = route[currentIndex];
       const nextRoute = route[nextIndex];
 
@@ -566,12 +613,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const x = currentRoute.x + (nextRoute.x - currentRoute.x) * t;
       const y = currentRoute.y + (nextRoute.y - currentRoute.y) * t;
 
-      // Transform image
+      // Render matrix to graphics card compositor
       bgImage.style.transform = `scale3d(${scale}, ${scale}, 1) translate3d(${x}%, ${y}%, 0)`;
 
-      // Determine which text block is active
+      // Step text toggle
       const activeStepIndex = Math.min(Math.round(rawIndex), segments);
-      
       steps.forEach((step, idx) => {
         if (idx === activeStepIndex) {
           step.classList.add("active");
@@ -580,17 +626,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-      // Hide or show helper indicator
-      if (progress < 0.15) {
+      // Show/Hide indicator
+      if (currentProgress < 0.15) {
         indicator.classList.remove("hide");
       } else {
         indicator.classList.add("hide");
       }
+
+      requestAnimationFrame(renderLoop);
     }
 
-    // High performance scrolling metrics
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
+    // Passive listener allows maximum touchscreen finger tracking speeds
+    window.addEventListener("scroll", onScroll, { passive: true });
+    
+    // Initial loop execution
+    onScroll();
+    requestAnimationFrame(renderLoop);
   });
 </script>
 
